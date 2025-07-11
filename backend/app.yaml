@@ -1,0 +1,12 @@
+runtime: nodejs18
+instance_class: F1       # micro instância gratuita
+env_variables:
+  GEMINI_API_KEY: "SEU_TOKEN_GEMINI"
+  GEMINI_MODEL: "text-bison-001"
+  GEMINI_ENDPOINT: "https://generativelanguage.googleapis.com/v1beta2/models/text-bison-001:generateText"
+  PORT: "8080"
+handlers:
+- url: /static
+  static_dir: public
+- url: /.*
+  script: auto
