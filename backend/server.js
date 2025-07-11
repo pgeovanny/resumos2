@@ -23,7 +23,7 @@ app.get('/', (req, res) => res.send('Law Summarizer Backend OK'));
 app.use('/api', routes);
 app.use(errorHandler);
 
-app.listen(PORT, () => logger.info(`Server listening on port ${PORT}`));
+// Aqui definimos a porta antes de usá-la
 const PORT = process.env.PORT || process.env.GAE_PORT || 8080;
 
-
+app.listen(PORT, () => logger.info(`Server listening on port ${PORT}`));
