@@ -583,7 +583,7 @@ async function api(path,{method="GET",body=null,prefer=""}={}){
   const headers={
     "apikey":SUPABASE_KEY,
     "Authorization":"Bearer "+SUPABASE_KEY,
-    "X-Studio-Key":key,
+    "X-Client-Info":key,
     "Content-Type":"application/json"
   };
   if(prefer)headers["Prefer"]=prefer;
