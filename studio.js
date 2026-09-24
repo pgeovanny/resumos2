@@ -58,8 +58,9 @@ TEXTO=Anulação e revogação partem de fundamentos distintos. A primeira se re
 [[/ATENCAO]]
 `;
 
-const CLASS_OPTIONS = ["REGRA","CONCEITO","COMPETENCIA","ESTRUTURA","CRITERIO","PROCESSO","CONSEQUENCIA","EXCECAO","TEMPORAL","LIMITE","ALERTA","NEUTRO"];
+const CLASS_OPTIONS = ["REGRA","CONCEITO","COMPETENCIA","ESTRUTURA","FINALIDADE","OBJETIVO","META","CRITERIO","APLICACAO","PROCESSO","TEORIA","CLASSIFICACAO","ROL","CONSEQUENCIA","EFEITO","EXCECAO","ESPECIAL","TEMPORAL","LIMITE","ALERTA","OBSERVACAO","ERRO","NEUTRO"];
 const LAYOUT_OPTIONS = ["LATERAL","VERTICAL","CHUVEIRO","FLUXO","DECISAO","CONTRASTE"];
+const SCHEME_TYPES = ["MAPA_TATICO","CONCEITO_CHAVES","FLUXO_HORIZONTAL","FLUXO_VERTICAL","ETAPAS_COM_FUNCAO","FLUXOGRAMA_DECISAO","FLUXO_RAMIFICADO","LINHA_DO_TEMPO","REGRA_EXCECOES","ESCADA","PRAZOS_ENCADEADOS","EQUACAO_VISUAL","ARVORE","RAMIFICACAO","LINHA_LATERAL","DIVERGENCIA","CONVERGENCIA","CICLO","CADEIA_NORMATIVA","CAMADAS","CONEXAO_ARTIGOS","REGRA_MEMBROS","LISTA_NUMERADA","PIRAMIDE","HIERARQUIA_ANINHADA","COMPARACAO_MULTIPLA","TAXONOMIA","CAMADAS_HORIZONTAIS"];
 
 const state = {
   projectId: null,
@@ -124,6 +125,7 @@ function formatInline(text=""){
     [/\[\[POSS\]\]([\s\S]*?)\[\[\/POSS\]\]/gi,'<span class="inline-poss">$1</span>'],
     [/\[\[CHAVE\]\]([\s\S]*?)\[\[\/CHAVE\]\]/gi,'<span class="inline-key">$1</span>'],
     [/\[\[REM\]\]([\s\S]*?)\[\[\/REM\]\]/gi,'<span class="inline-rem">$1</span>'],
+    [/\[\[COBRADO\]\]([\s\S]*?)\[\[\/COBRADO\]\]/gi,'<span class="inline-cobrado">$1</span>'],
     [/\*\*(.+?)\*\*/g,'<strong>$1</strong>'],
     [/==(.+?)==/g,'<span class="inline-key">$1</span>']
   ];
@@ -154,6 +156,7 @@ function parseAgentOutput(raw){
   const lines=String(raw||"").replace(/\r\n/g,"\n").split("\n");
   const blocks=[]; let i=0; let loose=[];
   const flushLoose=()=>{paragraphsFrom(loose).forEach(t=>blocks.push({id:uid(),type:"text",variant:"body",text:t}));loose=[]};
+  const collect=(closeRe)=>{const a=[];i++;while(i<lines.length&&!closeRe.test(lines[i].trim()))a.push(lines[i++].trim());if(i<lines.length)i++;return a};
 
   while(i<lines.length){
     const line=lines[i].trim();
@@ -161,92 +164,69 @@ function parseAgentOutput(raw){
 
     let m=line.match(/^\[\[(H1_LEI|H2_DIVISAO|H3_SECAO|H4_SUBSECAO|H5_TEMA)\]\]$/i);
     if(m){
-      flushLoose();
-      const tag=norm(m[1]), close="[[/"+tag+"]]", content=[]; i++;
-      while(i<lines.length && norm(lines[i].trim())!==norm(close)) content.push(lines[i++].trim());
-      if(i<lines.length)i++;
+      flushLoose(); const tag=norm(m[1]), content=collect(new RegExp("^\\[\\/"+tag+"\\]$","i"));
       const level=tag==="H1_LEI"?1:tag==="H2_DIVISAO"?2:tag==="H3_SECAO"?3:tag==="H4_SUBSECAO"?4:5;
-      blocks.push({id:uid(),type:"heading",level,text:content.join(" ").trim()});
-      continue;
+      blocks.push({id:uid(),type:"heading",level,text:content.join(" ").trim()}); continue;
     }
 
     m=line.match(/^\[\[(TEXTO_LEGAL|CORPO|FONTE)\]\]$/i);
     if(m){
-      flushLoose();
-      const tag=norm(m[1]),close="[[/"+tag+"]]",content=[];i++;
-      while(i<lines.length && norm(lines[i].trim())!==norm(close)) content.push(lines[i++]);
-      if(i<lines.length)i++;
+      flushLoose();const tag=norm(m[1]), content=collect(new RegExp("^\\[\\/"+tag+"\\]$","i"));
       const variant=tag==="TEXTO_LEGAL"?"legal":tag==="FONTE"?"source":"body";
-      paragraphsFrom(content).forEach(text=>blocks.push({id:uid(),type:"text",variant,text}));
-      continue;
+      paragraphsFrom(content).forEach(text=>blocks.push({id:uid(),type:"text",variant,text}));continue;
     }
 
-    m=line.match(/^\[\[(PONTO_PROVA|ATENCAO|EXEMPLO|VERIFICAR|ATUALIZACAO|JURISPRUDENCIA)\]\]$/i);
+    m=line.match(/^\[\[(COMENTARIO|PONTO_PROVA|ATENCAO|CUIDADO|NAO_CONFUNDA|OLHO_PRAZO|OLHO_COMPETENCIA|VALE_DECORAR|LETRA_LEI|COMO_CAI|REVISAO_30S|EXEMPLO|VERIFICAR|ATUALIZACAO|JURISPRUDENCIA|CHECKPOINT|GABARITO_CHECKPOINT)\]\]$/i);
     if(m){
-      flushLoose();
-      const tag=norm(m[1]),close="[[/"+tag+"]]",content=[];i++;
-      while(i<lines.length && norm(lines[i].trim())!==norm(close)) content.push(lines[i++].trim());
-      if(i<lines.length)i++;
-      const f=readFields(content);
+      flushLoose();const tag=norm(m[1]),content=collect(new RegExp("^\\[\\/"+tag+"\\]$","i")),f=readFields(content);
       const variants={
-        PONTO_PROVA:"point",ATENCAO:"alert",EXEMPLO:"example",VERIFICAR:"verify",
-        ATUALIZACAO:"update",JURISPRUDENCIA:"juris"
+        COMENTARIO:"comment",PONTO_PROVA:"point",ATENCAO:"alert",CUIDADO:"care",NAO_CONFUNDA:"contrast",
+        OLHO_PRAZO:"deadline",OLHO_COMPETENCIA:"competence",VALE_DECORAR:"memorize",LETRA_LEI:"lawletter",
+        COMO_CAI:"exam",REVISAO_30S:"review",EXEMPLO:"example",VERIFICAR:"verify",ATUALIZACAO:"update",
+        JURISPRUDENCIA:"juris",CHECKPOINT:"checkpoint",GABARITO_CHECKPOINT:"answer"
       };
-      blocks.push({
-        id:uid(),type:"callout",variant:variants[tag]||"point",
-        title:(f.TITULO||[""])[0],
-        text:(f.TEXTO||f.TESE||f.ALTERACAO||[""]).join(" "),
+      const rawText=(f.TEXTO||f.TESE||f.ALTERACAO||[]);
+      blocks.push({id:uid(),type:"callout",variant:variants[tag]||"point",title:(f.TITULO||[""])[0],
+        text:rawText.length?rawText.join(" "):content.filter(x=>!x.includes("=")).join(" "),
         meta:Object.fromEntries(Object.entries(f).filter(([k])=>!["TITULO","TEXTO"].includes(k)).map(([k,v])=>[k,v.join(" ")]))
-      });
-      continue;
+      }); continue;
     }
 
     if(/^\[\[TABELA\]\]$/i.test(line)){
-      flushLoose();const content=[];i++;
-      while(i<lines.length && !/^\[\[\/TABELA\]\]$/i.test(lines[i].trim()))content.push(lines[i++].trim());
-      if(i<lines.length)i++;
-      const f=readFields(content);
+      flushLoose();const content=collect(/^\[\[\/TABELA\]\]$/i),f=readFields(content);
       const columns=((f.COLUNAS||[""])[0]||"").split("|").map(x=>x.trim()).filter(Boolean);
-      const rows=(f.LINHA||[]).map(r=>r.split("|").map(x=>x.trim()));
-      blocks.push({
-        id:uid(),type:"table",tableType:(f.TIPO||["BASE"])[0],title:(f.TITULO||[""])[0],
-        columns,rows,source:(f.FONTE||[""])[0]
-      });
+      blocks.push({id:uid(),type:"table",tableType:(f.TIPO||["BASE"])[0],title:(f.TITULO||[""])[0],
+        columns,rows:(f.LINHA||[]).map(r=>r.split("|").map(x=>x.trim())),source:""});continue;
+    }
+
+    if(/^\[\[QUADRO_COMPARATIVO\]\]$/i.test(line)){
+      flushLoose();const content=collect(/^\[\[\/QUADRO_COMPARATIVO\]\]$/i),f=readFields(content);
+      blocks.push({id:uid(),type:"comparison",title:(f.TITULO||["Comparação"])[0],
+        aTitle:(f.A_TITULO||["A"])[0],aText:(f.A_TEXTO||[""])[0],bTitle:(f.B_TITULO||["B"])[0],bText:(f.B_TEXTO||[""])[0]});continue;
+    }
+
+    m=line.match(/^\[\[ESQUEMA:([A-Z0-9_]+)\]\]$/i);
+    if(m){
+      flushLoose();const schemeType=norm(m[1]),content=collect(/^\[\[\/ESQUEMA\]\]$/i),f=readFields(content);
+      if(schemeType==="MAPA_TATICO"){
+        const items=[],notes=[];let currentGroup="";
+        content.forEach(row=>{const p=row.indexOf("=");if(p<1)return;const k=norm(row.slice(0,p)),v=row.slice(p+1).trim();
+          if(k==="GRUPO"){currentGroup=v;return}
+          if(k==="ITEM"){const z=v.split("|");items.push({label:(z[0]||"").trim(),description:(z[1]||"").trim(),class:norm(z[2]||"NEUTRO"),group:currentGroup})}
+          if(k==="NOTA_LIGADA"){const z=v.split("|");notes.push({target:(z[0]||"").trim(),text:(z[1]||"").trim(),type:norm(z[2]||"OBSERVACAO")})}
+        });
+        const requested=norm((f.LAYOUT||f.ORIENTACAO||["LATERAL"])[0]);
+        blocks.push({id:uid(),type:"map",schemeType,title:(f.TITULO||["Mapa tático"])[0],
+          layout:LAYOUT_OPTIONS.includes(requested)?requested:(requested==="VERTICAL"?"VERTICAL":"LATERAL"),
+          root:(f.RAIZ||[""])[0],reference:(f.REFERENCIA||[""])[0],items,notes,raw:content.join("\n")});
+      }else{
+        blocks.push({id:uid(),type:"scheme",schemeType,title:(f.TITULO||[schemeType.replaceAll("_"," ")])[0],
+          fields:f,raw:content.join("\n")});
+      }
       continue;
     }
 
-    if(/^\[\[ESQUEMA:MAPA_TATICO\]\]$/i.test(line)){
-      flushLoose();const content=[];i++;
-      while(i<lines.length && !/^\[\[\/ESQUEMA\]\]$/i.test(lines[i].trim()))content.push(lines[i++].trim());
-      if(i<lines.length)i++;
-      const f=readFields(content),items=[],notes=[];let currentGroup="";
-      content.forEach(row=>{
-        const p=row.indexOf("=");if(p<1)return;
-        const k=norm(row.slice(0,p)),v=row.slice(p+1).trim();
-        if(k==="GRUPO"){currentGroup=v;return}
-        if(k==="ITEM"){
-          const z=v.split("|");
-          items.push({label:(z[0]||"").trim(),description:(z[1]||"").trim(),class:norm(z[2]||"NEUTRO"),group:currentGroup});
-        }
-        if(k==="NOTA_LIGADA"){
-          const z=v.split("|");
-          notes.push({target:(z[0]||"").trim(),text:(z[1]||"").trim(),type:norm(z[2]||"OBSERVACAO")});
-        }
-      });
-      blocks.push({
-        id:uid(),type:"map",title:(f.TITULO||["Mapa tático"])[0],
-        layout:norm((f.LAYOUT||["LATERAL"])[0]),root:(f.RAIZ||[""])[0],
-        reference:(f.REFERENCIA||[""])[0],items,notes
-      });
-      continue;
-    }
-
-    if(/^\[\[/.test(line)){
-      // Marcador ainda não modelado: preserva conteúdo como texto para não perder informação.
-      flushLoose();
-      loose.push(line);i++;continue;
-    }
-
+    if(/^\[\[/.test(line)){flushLoose();loose.push(line);i++;continue}
     loose.push(line);i++;
   }
   flushLoose();
@@ -262,13 +242,14 @@ function renderText(b){
   return '<p class="'+cls+'">'+formatInline(b.text)+'</p>';
 }
 function renderCallout(b){
-  const labels={point:"PONTO DE PROVA",alert:"ATENÇÃO",example:"EXEMPLO",verify:"VERIFIQUE",update:"ATUALIZAÇÃO",juris:"JURISPRUDÊNCIA"};
-  const cls=b.variant==="alert"||b.variant==="update"?"alert":b.variant==="example"?"example":b.variant==="verify"?"verify":"";
-  let meta="";
-  if(b.meta && Object.keys(b.meta).length){
-    meta='<div class="source-note">'+Object.entries(b.meta).map(([k,v])=>esc(k.replaceAll("_"," "))+' · '+esc(v)).join(" &nbsp; ")+'</div>';
-  }
-  return '<aside class="callout '+cls+'"><div class="callout-label">'+esc(labels[b.variant]||"DESTAQUE")+'</div>'+
+  const labels={
+    point:"PONTO DE PROVA",alert:"ATENÇÃO",care:"CUIDADO",contrast:"NÃO CONFUNDA",deadline:"OLHO NO PRAZO",
+    competence:"OLHO NA COMPETÊNCIA",memorize:"VALE DECORAR",lawletter:"LETRA DA LEI",exam:"COMO CAI",
+    review:"REVISÃO 30S",comment:"COMENTÁRIO",example:"EXEMPLO",verify:"VERIFIQUE",update:"ATUALIZAÇÃO",
+    juris:"JURISPRUDÊNCIA",checkpoint:"CHECKPOINT",answer:"GABARITO"
+  };
+  const meta=b.meta&&Object.keys(b.meta).length?'<div class="source-note">'+Object.entries(b.meta).map(([k,v])=>esc(k.replaceAll("_"," "))+' · '+esc(v)).join(" &nbsp; ")+'</div>':"";
+  return '<aside class="callout callout-'+esc(b.variant)+'"><div class="callout-label">'+esc(labels[b.variant]||"DESTAQUE")+'</div>'+
     (b.title?'<h4 class="callout-title">'+formatInline(b.title)+'</h4>':'')+
     '<p class="callout-body">'+formatInline(b.text)+'</p>'+meta+'</aside>';
 }
@@ -329,6 +310,97 @@ function renderMap(b){
   return '<section class="tactical-map map-'+layout.toLowerCase()+'">'+title+body+
     (b.reference?'<div class="source-note">'+formatInline(b.reference)+'</div>':'')+'</section>';
 }
+function renderComparison(b){
+  return '<section class="draw-comparison"><div class="draw-title">'+formatInline(b.title||"Comparação")+'</div>'+
+    '<div class="draw-comparison-grid"><div class="draw-pole"><strong>'+formatInline(b.aTitle)+'</strong><p>'+formatInline(b.aText)+'</p></div>'+
+    '<div class="draw-vs">×</div><div class="draw-pole"><strong>'+formatInline(b.bTitle)+'</strong><p>'+formatInline(b.bText)+'</p></div></div></section>';
+}
+function vals(b,key){return (b.fields?.[key]||[])}
+function splitPipe(v){return String(v||"").split("|").map(x=>x.trim())}
+function drawTitle(b){return '<div class="draw-title">'+formatInline(b.title||b.schemeType.replaceAll("_"," "))+'</div>'}
+function drawNode(label,desc="",extra=""){
+  return '<div class="draw-node '+extra+'"><strong>'+formatInline(label)+'</strong>'+(desc?'<span>'+formatInline(desc)+'</span>':'')+'</div>';
+}
+function renderScheme(b){
+  const t=norm(b.schemeType), f=b.fields||{}; let body="";
+  if(t==="FLUXO_HORIZONTAL"||t==="FLUXO_VERTICAL"){
+    const items=vals(b,"ITEM");
+    body='<div class="draw-flow '+(t==="FLUXO_VERTICAL"?"vertical":"horizontal")+'">'+items.map((x,i)=>'<div class="draw-flow-step">'+drawNode(x)+'<i>'+(i<items.length-1?(t==="FLUXO_VERTICAL"?"↓":"→"):"")+'</i></div>').join("")+'</div>';
+  }else if(t==="CONCEITO_CHAVES"){
+    const concept=(f.CONCEITO||["CONCEITO"])[0], keys=vals(b,"CHAVE").map(splitPipe);
+    body='<div class="concept-orbit"><div class="concept-center">'+formatInline(concept)+'</div><div class="concept-rays">'+keys.map(x=>'<div class="concept-ray">'+drawNode(x[0],x[1])+'</div>').join("")+'</div></div>';
+  }else if(t==="ETAPAS_COM_FUNCAO"){
+    const steps=vals(b,"ETAPA").map(splitPipe);
+    body='<div class="draw-rail">'+steps.map((x,i)=>'<div class="rail-step"><b>'+(i+1)+'</b><div><strong>'+formatInline(x[0])+'</strong><span>'+formatInline(x[1]||"")+'</span></div></div>').join("")+'</div>';
+  }else if(t==="FLUXOGRAMA_DECISAO"){
+    const stages=[...(f.INICIO||[]),...vals(b,"ETAPA")];
+    body='<div class="decision-drawing"><div class="decision-pre">'+stages.map(x=>drawNode(x)).join('<span class="arrow-down">↓</span>')+'</div>'+
+      '<div class="decision-diamond">'+formatInline((f.DECISAO||["Decisão"])[0])+'</div>'+
+      '<div class="decision-branches"><div><em>SIM</em>'+drawNode((f.SIM||[""])[0])+'</div><div><em>NÃO</em>'+drawNode((f.NAO||[""])[0])+'</div></div></div>';
+  }else if(t==="FLUXO_RAMIFICADO"){
+    const stages=[...(f.INICIO||[]),...vals(b,"ETAPA")],outs=vals(b,"SAIDA");
+    body='<div class="branch-drawing"><div class="branch-stem">'+stages.map(x=>drawNode(x)).join('<span>↓</span>')+'</div><div class="branch-bar"></div><div class="branch-outs">'+outs.map(x=>drawNode(x)).join("")+'</div></div>';
+  }else if(t==="LINHA_DO_TEMPO"){
+    const marks=vals(b,"MARCO").map(splitPipe);
+    body='<div class="timeline-drawing">'+marks.map((x,i)=>'<div class="timeline-point"><b>'+(i+1)+'</b><strong>'+formatInline(x[0])+'</strong><span>'+formatInline(x[1]||"")+'</span></div>').join("")+'</div>';
+  }else if(t==="REGRA_EXCECOES"){
+    const rule=(f.REGRA||["REGRA"])[0],ex=vals(b,"EXCECAO");
+    body='<div class="rule-drawing"><div class="rule-main">'+formatInline(rule)+'</div><div class="rule-bracket"></div><div class="rule-exceptions">'+ex.map((x,i)=>'<div><small>EXCEÇÃO '+(i+1)+'</small>'+formatInline(x)+'</div>').join("")+'</div></div>';
+  }else if(t==="ESCADA"){
+    const axis=(f.EIXO||[""])[0],lv=vals(b,"NIVEL").map(splitPipe);
+    body='<div class="stair-axis">'+formatInline(axis)+'</div><div class="staircase">'+lv.map((x,i)=>'<div class="stair" style="--step:'+i+'"><b>'+formatInline(x[0])+'</b><span>'+formatInline(x[1]||"")+'</span></div>').join("")+'</div>';
+  }else if(t==="PRAZOS_ENCADEADOS"){
+    const ev=vals(b,"EVENTO").map(splitPipe);
+    body='<div class="deadline-chain">'+ev.map((x,i)=>'<div class="deadline-event"><div class="deadline-dot">'+(i+1)+'</div><div><strong>'+formatInline(x[0])+'</strong><b>'+formatInline(x[1]||"")+'</b><span>'+formatInline(x[2]||"")+'</span><em>'+formatInline(x[3]||"")+'</em></div></div>').join("")+'</div>';
+  }else if(t==="EQUACAO_VISUAL"){
+    body='<div class="equation-visual">'+vals(b,"LINHA").map(v=>{const x=splitPipe(v);return '<div><span>'+formatInline(x[0])+'</span><b>'+formatInline(x[1]||"")+'</b><span>'+formatInline(x[2]||"")+'</span></div>'}).join("")+'</div>';
+  }else if(t==="ARVORE"){
+    const root=(f.RAIZ||["RAIZ"])[0],children=vals(b,"FILHO");
+    body='<div class="tree-drawing"><div class="tree-root">'+formatInline(root)+'</div><div class="tree-trunk"></div><div class="tree-children">'+children.map(x=>drawNode(x)).join("")+'</div></div>';
+  }else if(t==="RAMIFICACAO"){
+    const center=(f.CENTRO||["CENTRO"])[0],groups=[];let gi=-1;
+    (b.raw||"").split("\n").forEach(line=>{const p=line.indexOf("=");if(p<1)return;const k=norm(line.slice(0,p)),v=line.slice(p+1).trim();if(k==="GRUPO"){groups.push({name:v,items:[]});gi++}if(k==="SUBITEM"&&gi>=0)groups[gi].items.push(v)});
+    body='<div class="radial-drawing"><div class="radial-center">'+formatInline(center)+'</div><div class="radial-groups">'+groups.map(g=>'<div class="radial-group"><strong>'+formatInline(g.name)+'</strong>'+g.items.map(x=>'<span>'+formatInline(x)+'</span>').join("")+'</div>').join("")+'</div></div>';
+  }else if(t==="LINHA_LATERAL"||t==="LISTA_NUMERADA"){
+    const items=vals(b,"ITEM");
+    body='<div class="side-line">'+items.map((x,i)=>'<div class="side-line-item"><b>'+String(i+1).padStart(2,"0")+'</b><span>'+formatInline(x)+'</span></div>').join("")+'</div>';
+  }else if(t==="DIVERGENCIA"){
+    const start=(f.ORIGEM||f.INICIO||f.RAIZ||["NÚCLEO"])[0],outs=vals(b,"SAIDA").concat(vals(b,"ITEM"));
+    body='<div class="diverge"><div class="diverge-source">'+formatInline(start)+'</div><div class="branch-bar"></div><div class="branch-outs">'+outs.map(x=>drawNode(x)).join("")+'</div></div>';
+  }else if(t==="CONVERGENCIA"){
+    const ins=vals(b,"ENTRADA").concat(vals(b,"ITEM")),result=(f.RESULTADO||f.SAIDA||["RESULTADO"])[0];
+    body='<div class="converge"><div class="branch-outs">'+ins.map(x=>drawNode(x)).join("")+'</div><div class="branch-bar"></div><div class="diverge-source">'+formatInline(result)+'</div></div>';
+  }else if(t==="CICLO"){
+    const items=vals(b,"ITEM").concat(vals(b,"ETAPA"));
+    body='<div class="cycle-drawing">'+items.map((x,i)=>'<div class="cycle-item"><b>'+formatInline(x)+'</b><span>↻</span></div>').join("")+'</div>';
+  }else if(t==="CADEIA_NORMATIVA"||t==="CAMADAS_HORIZONTAIS"){
+    const items=vals(b,"ITEM").concat(vals(b,"CAMADA")).concat(vals(b,"NIVEL"));
+    body='<div class="layer-chain">'+items.map((x,i)=>'<div style="--layer:'+i+'">'+formatInline(x)+'</div>').join("")+'</div>';
+  }else if(t==="CAMADAS"||t==="HIERARQUIA_ANINHADA"){
+    const items=vals(b,"CAMADA").concat(vals(b,"NIVEL")).concat(vals(b,"ITEM"));
+    body='<div class="nested-layers">'+items.map((x,i)=>'<div style="--layer:'+i+'">'+formatInline(x)+'</div>').join("")+'</div>';
+  }else if(t==="CONEXAO_ARTIGOS"){
+    const items=vals(b,"ARTIGO").concat(vals(b,"ITEM"));
+    body='<div class="article-links">'+items.map(x=>'<span>'+formatInline(x)+'</span>').join('<i>↔</i>')+'</div>';
+  }else if(t==="REGRA_MEMBROS"){
+    const rule=(f.REGRA||["REGRA"])[0],members=vals(b,"MEMBRO").concat(vals(b,"ITEM"));
+    body='<div class="members-drawing"><div class="rule-main">'+formatInline(rule)+'</div><div class="member-brace">{</div><div class="member-list">'+members.map(x=>'<span>'+formatInline(x)+'</span>').join("")+'</div></div>';
+  }else if(t==="PIRAMIDE"){
+    const items=vals(b,"NIVEL").concat(vals(b,"ITEM"));
+    body='<div class="pyramid">'+items.map((x,i)=>'<div style="--w:'+(52+i*(40/Math.max(items.length-1,1)))+'%">'+formatInline(x)+'</div>').join("")+'</div>';
+  }else if(t==="COMPARACAO_MULTIPLA"){
+    const items=vals(b,"ITEM").concat(vals(b,"POLO"));
+    body='<div class="multi-compare">'+items.map(x=>{const z=splitPipe(x);return '<div><strong>'+formatInline(z[0])+'</strong><span>'+formatInline(z.slice(1).join(" · "))+'</span></div>'}).join("")+'</div>';
+  }else if(t==="TAXONOMIA"){
+    const root=(f.RAIZ||f.CENTRO||["CLASSIFICAÇÃO"])[0],items=vals(b,"CLASSE").concat(vals(b,"ITEM")).concat(vals(b,"FILHO"));
+    body='<div class="taxonomy"><div class="tree-root">'+formatInline(root)+'</div><div class="taxonomy-list">'+items.map(x=>drawNode(x)).join("")+'</div></div>';
+  }else{
+    const pairs=Object.entries(f).filter(([k])=>k!=="TITULO");
+    body='<div class="generic-drawing">'+pairs.map(([k,arr])=>'<section><b>'+esc(k.replaceAll("_"," "))+'</b>'+arr.map(x=>'<span>'+formatInline(x)+'</span>').join("")+'</section>').join("")+'</div>';
+  }
+  return '<section class="draw-scheme scheme-'+t.toLowerCase()+'">'+drawTitle(b)+body+'</section>';
+}
+
 function renderBlock(b){
   let inner="";
   if(b.type==="heading")inner=renderHeading(b);
@@ -336,6 +408,8 @@ function renderBlock(b){
   else if(b.type==="callout")inner=renderCallout(b);
   else if(b.type==="table")inner=renderTable(b);
   else if(b.type==="map")inner=renderMap(b);
+  else if(b.type==="scheme")inner=renderScheme(b);
+  else if(b.type==="comparison")inner=renderComparison(b);
   return '<div class="render-block '+(state.selectedId===b.id?"selected":"")+'" data-block-id="'+b.id+'">'+inner+'</div>';
 }
 
@@ -364,6 +438,8 @@ function blockName(b){
   if(b.type==="callout")return b.title||"Destaque";
   if(b.type==="table")return b.title||"Tabela";
   if(b.type==="map")return b.title||"Mapa tático";
+  if(b.type==="scheme")return b.title||b.schemeType;
+  if(b.type==="comparison")return b.title||"Quadro comparativo";
   return "Bloco";
 }
 function blockTypeLabel(b){
@@ -372,6 +448,8 @@ function blockTypeLabel(b){
   if(b.type==="callout")return b.variant.toUpperCase();
   if(b.type==="table")return "TABELA";
   if(b.type==="map")return "MAPA TÁTICO";
+  if(b.type==="scheme")return b.schemeType;
+  if(b.type==="comparison")return "QUADRO COMPARATIVO";
   return b.type.toUpperCase();
 }
 function renderBlockList(){
@@ -380,7 +458,7 @@ function renderBlockList(){
     '<div class="block-row '+(b.id===state.selectedId?"active":"")+'" data-select-block="'+b.id+'">'+
     '<span class="block-index">'+(i+1)+'</span><div class="block-main"><div class="block-type">'+esc(blockTypeLabel(b))+'</div>'+
     '<div class="block-label">'+esc(blockName(b))+'</div></div>'+
-    (b.type==="map"?'<span class="block-layout-chip">'+esc(b.layout)+'</span>':'')+'</div>'
+    (b.type==="map"?'<span class="block-layout-chip">'+esc(b.layout)+'</span>':b.type==="scheme"?'<span class="block-layout-chip">'+esc(b.schemeType)+'</span>':'')+'</div>'
   ).join("");
 }
 function renderAll(){
@@ -409,6 +487,7 @@ function textField(label,value,key,type="input"){
 function selectField(label,value,key,options){
   return '<div class="field"><label>'+esc(label)+'</label><select data-field="'+key+'">'+options.map(o=>'<option value="'+esc(o)+'" '+(String(o)===String(value)?"selected":"")+'>'+esc(o)+'</option>').join("")+'</select></div>';
 }
+function fieldsToRaw(fields={}){return Object.entries(fields).flatMap(([k,v])=>(v||[]).map(x=>k+"="+x)).join("\n")}
 function renderInspector(){
   const b=selectedBlock();
   $("inspectorEmpty").classList.toggle("hidden",!!b);
@@ -464,6 +543,18 @@ function renderInspector(){
       ).join("")+'</div><button class="add-mini" id="addMapNote">+ nota ligada</button></div>';
   }
 
+  if(b.type==="scheme"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Esquema da Macro</div>'+
+      selectField("Tipo",b.schemeType,"schemeType",SCHEME_TYPES)+
+      textField("Título",b.title,"title")+
+      textField("Campos ABI",b.raw||fieldsToRaw(b.fields),"raw","textarea")+
+      '<div class="panel-help">Edite os campos exatamente como na Macro. O desenho é reconstruído em tempo real.</div></div>';
+  }
+  if(b.type==="comparison"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Comparativo</div>'+
+      textField("Título",b.title,"title")+textField("A · título",b.aTitle,"aTitle")+textField("A · texto",b.aText,"aText","textarea")+
+      textField("B · título",b.bTitle,"bTitle")+textField("B · texto",b.bText,"bText","textarea")+'</div>';
+  }
   $("inspectorFields").innerHTML=html;
   bindInspectorEvents();
 }
@@ -476,6 +567,7 @@ function bindInspectorEvents(){
       updateSelected(b=>{
         if(k==="level")b[k]=Number(el.value);
         else if(k==="columns")b.columns=el.value.split("|").map(x=>x.trim()).filter(Boolean);
+        else if(k==="raw"){b.raw=el.value;b.fields=readFields(el.value.split("\n"));}
         else b[k]=el.value;
       });
     });
