@@ -1,0 +1,740 @@
+const SUPABASE_URL = "https://cceglrxtatwtdgdfhmgr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_4vQ9xxVoZ83a0NeBXZVivA_nFCn5IVH";
+
+const DEMO_SOURCE = `[[H1_LEI]]
+LEI Nº 9.784/1999
+[[/H1_LEI]]
+
+[[H2_DIVISAO]]
+CONTROLE DOS ATOS ADMINISTRATIVOS
+[[/H2_DIVISAO]]
+
+[[TEXTO_LEGAL]]
+Art. 54. O direito da Administração de anular os atos administrativos de que decorram efeitos favoráveis para os destinatários decai em [[CHAVE]]cinco anos[[/CHAVE]], contados da data em que foram praticados, salvo comprovada [[NEG]]má-fé[[/NEG]].
+[[/TEXTO_LEGAL]]
+
+[[PONTO_PROVA]]
+TITULO=Prazo que muda o gabarito
+TEXTO=Em atos favoráveis ao destinatário, o prazo decadencial é de cinco anos. A comprovada má-fé afasta a proteção temporal da regra.
+[[/PONTO_PROVA]]
+
+[[H3_SECAO]]
+Anulação, revogação e convalidação
+[[/H3_SECAO]]
+
+[[ESQUEMA:MAPA_TATICO]]
+TITULO=Três respostas possíveis da Administração
+LAYOUT=CHUVEIRO
+RAIZ=CONTROLE DOS ATOS ADMINISTRATIVOS
+ITEM=Anulação|Retirada do ato em razão de ilegalidade.|REGRA
+ITEM=Revogação|Retirada de ato válido por conveniência e oportunidade.|CONCEITO
+ITEM=Convalidação|Correção do ato quando o vício admitir saneamento.|CONSEQUENCIA
+[[/ESQUEMA]]
+
+[[H3_SECAO]]
+Regra e ressalva
+[[/H3_SECAO]]
+
+[[ESQUEMA:MAPA_TATICO]]
+TITULO=Decadência do direito de anular
+LAYOUT=CONTRASTE
+RAIZ=ATO FAVORÁVEL AO DESTINATÁRIO
+ITEM=REGRA|O direito de anular decai em cinco anos, contados da prática do ato.|REGRA
+ITEM=EXCEÇÃO|A comprovada má-fé impede a incidência da proteção prevista na regra decadencial.|EXCECAO
+[[/ESQUEMA]]
+
+[[TABELA]]
+TIPO=COMPARATIVA
+TITULO=Anulação x revogação
+COLUNAS=Critério|Anulação|Revogação
+LINHA=Fundamento|Ilegalidade|Conveniência e oportunidade
+LINHA=Objeto|Ato inválido|Ato válido
+LINHA=Natureza do controle|Legalidade|Mérito administrativo
+[[/TABELA]]
+
+[[ATENCAO]]
+TITULO=Não trate os institutos como sinônimos
+TEXTO=Anulação e revogação partem de fundamentos distintos. A primeira se relaciona à legalidade; a segunda, ao mérito administrativo.
+[[/ATENCAO]]
+`;
+
+const CLASS_OPTIONS = ["REGRA","CONCEITO","COMPETENCIA","ESTRUTURA","CRITERIO","PROCESSO","CONSEQUENCIA","EXCECAO","TEMPORAL","LIMITE","ALERTA","NEUTRO"];
+const LAYOUT_OPTIONS = ["LATERAL","VERTICAL","CHUVEIRO","FLUXO","DECISAO","CONTRASTE"];
+
+const state = {
+  projectId: null,
+  projectName: "Novo material",
+  source: "",
+  blocks: [],
+  selectedId: null,
+  dirty: false,
+  zoom: 1,
+  document: {
+    title: "Lei nº 9.784/1999",
+    subtitle: "Processo Administrativo Federal · Legislação Estratégica",
+    edition: "Pós-edital 2026",
+    brand: "BLACK BELT · LEGISLAÇÃO ESTRATÉGICA",
+    meta: "Material de estudo · revisão orientada para prova",
+    theme: "ponto",
+    showCover: true,
+    showHeader: true,
+    economy: false
+  }
+};
+
+const $ = (id) => document.getElementById(id);
+const esc = (value="") => String(value)
+  .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "b-"+Date.now()+"-"+Math.random().toString(36).slice(2));
+const norm = (s="") => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().trim();
+const debounce = (fn,ms=220)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
+
+function toast(message, type="ok"){
+  const el=$("toast");
+  el.textContent=message;
+  el.className="toast show"+(type==="error"?" error":"");
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>el.className="toast",2200);
+}
+
+function markDirty(){
+  state.dirty=true;
+  $("saveStatus").textContent="alterações não salvas";
+  $("saveStatusDot").className="status-dot dirty";
+  persistLocal();
+}
+function markSaved(){
+  state.dirty=false;
+  $("saveStatus").textContent="salvo";
+  $("saveStatusDot").className="status-dot saved";
+  persistLocal();
+}
+const persistLocal = debounce(()=>{
+  localStorage.setItem("resumo-studio-autobackup", JSON.stringify({
+    ...state,
+    dirty:true
+  }));
+},250);
+
+function formatInline(text=""){
+  let h=esc(text);
+  const rules=[
+    [/\[\[NEG\]\]([\s\S]*?)\[\[\/NEG\]\]/gi,'<span class="inline-neg">$1</span>'],
+    [/\[\[POSS\]\]([\s\S]*?)\[\[\/POSS\]\]/gi,'<span class="inline-poss">$1</span>'],
+    [/\[\[CHAVE\]\]([\s\S]*?)\[\[\/CHAVE\]\]/gi,'<span class="inline-key">$1</span>'],
+    [/\[\[REM\]\]([\s\S]*?)\[\[\/REM\]\]/gi,'<span class="inline-rem">$1</span>'],
+    [/\*\*(.+?)\*\*/g,'<strong>$1</strong>'],
+    [/==(.+?)==/g,'<span class="inline-key">$1</span>']
+  ];
+  rules.forEach(([re,r])=>h=h.replace(re,r));
+  h=h.replace(/^(Art\.?\s*\d+[º°]?(?:-[A-Z])?\.?)/i,'<span class="article-prefix">$1</span>');
+  return h;
+}
+
+function readFields(lines){
+  const o={};
+  lines.forEach(line=>{
+    const p=line.indexOf("=");
+    if(p<1)return;
+    const k=norm(line.slice(0,p)),v=line.slice(p+1).trim();
+    (o[k]||(o[k]=[])).push(v);
+  });
+  return o;
+}
+
+function paragraphsFrom(lines){
+  const out=[];let p=[];
+  const flush=()=>{const s=p.join(" ").replace(/\s+/g," ").trim();if(s)out.push(s);p=[]};
+  lines.forEach(line=>{if(!line.trim())flush();else p.push(line.trim())});
+  flush();return out;
+}
+
+function parseAgentOutput(raw){
+  const lines=String(raw||"").replace(/\r\n/g,"\n").split("\n");
+  const blocks=[]; let i=0; let loose=[];
+  const flushLoose=()=>{paragraphsFrom(loose).forEach(t=>blocks.push({id:uid(),type:"text",variant:"body",text:t}));loose=[]};
+
+  while(i<lines.length){
+    const line=lines[i].trim();
+    if(!line){loose.push("");i++;continue}
+
+    let m=line.match(/^\[\[(H1_LEI|H2_DIVISAO|H3_SECAO|H4_SUBSECAO|H5_TEMA)\]\]$/i);
+    if(m){
+      flushLoose();
+      const tag=norm(m[1]), close="[[/"+tag+"]]", content=[]; i++;
+      while(i<lines.length && norm(lines[i].trim())!==norm(close)) content.push(lines[i++].trim());
+      if(i<lines.length)i++;
+      const level=tag==="H1_LEI"?1:tag==="H2_DIVISAO"?2:tag==="H3_SECAO"?3:tag==="H4_SUBSECAO"?4:5;
+      blocks.push({id:uid(),type:"heading",level,text:content.join(" ").trim()});
+      continue;
+    }
+
+    m=line.match(/^\[\[(TEXTO_LEGAL|CORPO|FONTE)\]\]$/i);
+    if(m){
+      flushLoose();
+      const tag=norm(m[1]),close="[[/"+tag+"]]",content=[];i++;
+      while(i<lines.length && norm(lines[i].trim())!==norm(close)) content.push(lines[i++]);
+      if(i<lines.length)i++;
+      const variant=tag==="TEXTO_LEGAL"?"legal":tag==="FONTE"?"source":"body";
+      paragraphsFrom(content).forEach(text=>blocks.push({id:uid(),type:"text",variant,text}));
+      continue;
+    }
+
+    m=line.match(/^\[\[(PONTO_PROVA|ATENCAO|EXEMPLO|VERIFICAR|ATUALIZACAO|JURISPRUDENCIA)\]\]$/i);
+    if(m){
+      flushLoose();
+      const tag=norm(m[1]),close="[[/"+tag+"]]",content=[];i++;
+      while(i<lines.length && norm(lines[i].trim())!==norm(close)) content.push(lines[i++].trim());
+      if(i<lines.length)i++;
+      const f=readFields(content);
+      const variants={
+        PONTO_PROVA:"point",ATENCAO:"alert",EXEMPLO:"example",VERIFICAR:"verify",
+        ATUALIZACAO:"update",JURISPRUDENCIA:"juris"
+      };
+      blocks.push({
+        id:uid(),type:"callout",variant:variants[tag]||"point",
+        title:(f.TITULO||[""])[0],
+        text:(f.TEXTO||f.TESE||f.ALTERACAO||[""]).join(" "),
+        meta:Object.fromEntries(Object.entries(f).filter(([k])=>!["TITULO","TEXTO"].includes(k)).map(([k,v])=>[k,v.join(" ")]))
+      });
+      continue;
+    }
+
+    if(/^\[\[TABELA\]\]$/i.test(line)){
+      flushLoose();const content=[];i++;
+      while(i<lines.length && !/^\[\[\/TABELA\]\]$/i.test(lines[i].trim()))content.push(lines[i++].trim());
+      if(i<lines.length)i++;
+      const f=readFields(content);
+      const columns=((f.COLUNAS||[""])[0]||"").split("|").map(x=>x.trim()).filter(Boolean);
+      const rows=(f.LINHA||[]).map(r=>r.split("|").map(x=>x.trim()));
+      blocks.push({
+        id:uid(),type:"table",tableType:(f.TIPO||["BASE"])[0],title:(f.TITULO||[""])[0],
+        columns,rows,source:(f.FONTE||[""])[0]
+      });
+      continue;
+    }
+
+    if(/^\[\[ESQUEMA:MAPA_TATICO\]\]$/i.test(line)){
+      flushLoose();const content=[];i++;
+      while(i<lines.length && !/^\[\[\/ESQUEMA\]\]$/i.test(lines[i].trim()))content.push(lines[i++].trim());
+      if(i<lines.length)i++;
+      const f=readFields(content),items=[],notes=[];let currentGroup="";
+      content.forEach(row=>{
+        const p=row.indexOf("=");if(p<1)return;
+        const k=norm(row.slice(0,p)),v=row.slice(p+1).trim();
+        if(k==="GRUPO"){currentGroup=v;return}
+        if(k==="ITEM"){
+          const z=v.split("|");
+          items.push({label:(z[0]||"").trim(),description:(z[1]||"").trim(),class:norm(z[2]||"NEUTRO"),group:currentGroup});
+        }
+        if(k==="NOTA_LIGADA"){
+          const z=v.split("|");
+          notes.push({target:(z[0]||"").trim(),text:(z[1]||"").trim(),type:norm(z[2]||"OBSERVACAO")});
+        }
+      });
+      blocks.push({
+        id:uid(),type:"map",title:(f.TITULO||["Mapa tático"])[0],
+        layout:norm((f.LAYOUT||["LATERAL"])[0]),root:(f.RAIZ||[""])[0],
+        reference:(f.REFERENCIA||[""])[0],items,notes
+      });
+      continue;
+    }
+
+    if(/^\[\[/.test(line)){
+      // Marcador ainda não modelado: preserva conteúdo como texto para não perder informação.
+      flushLoose();
+      loose.push(line);i++;continue;
+    }
+
+    loose.push(line);i++;
+  }
+  flushLoose();
+  return blocks;
+}
+
+function renderHeading(b){
+  return '<h'+b.level+' class="print-h'+b.level+'">'+formatInline(b.text)+'</h'+b.level+'>';
+}
+function renderText(b){
+  if(b.variant==="source") return '<div class="source-note">'+formatInline(b.text)+'</div>';
+  const cls=b.variant==="legal"?"legal-text":"body-text justified";
+  return '<p class="'+cls+'">'+formatInline(b.text)+'</p>';
+}
+function renderCallout(b){
+  const labels={point:"PONTO DE PROVA",alert:"ATENÇÃO",example:"EXEMPLO",verify:"VERIFIQUE",update:"ATUALIZAÇÃO",juris:"JURISPRUDÊNCIA"};
+  const cls=b.variant==="alert"||b.variant==="update"?"alert":b.variant==="example"?"example":b.variant==="verify"?"verify":"";
+  let meta="";
+  if(b.meta && Object.keys(b.meta).length){
+    meta='<div class="source-note">'+Object.entries(b.meta).map(([k,v])=>esc(k.replaceAll("_"," "))+' · '+esc(v)).join(" &nbsp; ")+'</div>';
+  }
+  return '<aside class="callout '+cls+'"><div class="callout-label">'+esc(labels[b.variant]||"DESTAQUE")+'</div>'+
+    (b.title?'<h4 class="callout-title">'+formatInline(b.title)+'</h4>':'')+
+    '<p class="callout-body">'+formatInline(b.text)+'</p>'+meta+'</aside>';
+}
+function renderTable(b){
+  const columns=b.columns||[];
+  return '<section class="editorial-table-wrap">'+
+    (b.title?'<div class="table-title">'+formatInline(b.title)+'</div>':'')+
+    '<table class="editorial-table"><thead><tr>'+columns.map(c=>'<th>'+formatInline(c)+'</th>').join("")+'</tr></thead>'+
+    '<tbody>'+(b.rows||[]).map(r=>'<tr>'+columns.map((_,i)=>'<td>'+formatInline(r[i]||"")+'</td>').join("")+'</tr>').join("")+'</tbody></table>'+
+    (b.source?'<div class="source-note">'+formatInline(b.source)+'</div>':'')+'</section>';
+}
+function mapCard(item, notes=[]){
+  const klass=norm(item.class||"NEUTRO").toLowerCase();
+  const special=["excecao","limite","temporal","alerta"].includes(klass)?" special-border":"";
+  const noteHtml=notes.filter(n=>n.target===item.label).map(n=>'<div class="map-note">'+formatInline(n.text)+'</div>').join("");
+  return '<div class="map-card class-'+esc(klass)+special+'" data-label="'+esc(norm(item.label))+'">'+
+    '<div class="map-label">'+formatInline(item.label)+'</div>'+
+    '<div class="map-desc">'+formatInline(item.description)+'</div>'+noteHtml+'</div>';
+}
+function groupItems(items){
+  const groups=[];const index=new Map();
+  items.forEach(item=>{
+    const name=item.group||"";
+    if(!index.has(name)){index.set(name,groups.length);groups.push({name,items:[]})}
+    groups[index.get(name)].items.push(item);
+  });
+  return groups;
+}
+function renderMap(b){
+  const layout=LAYOUT_OPTIONS.includes(norm(b.layout))?norm(b.layout):"LATERAL";
+  const root='<div class="scheme-root">'+formatInline(b.root||"NÚCLEO")+'</div>';
+  const title='<div class="map-title-row"><span class="map-title-filet"></span><div class="map-title">'+formatInline(b.title||"Mapa tático")+'</div></div>';
+  const items=b.items||[], notes=b.notes||[];
+  let body="";
+
+  if(layout==="CHUVEIRO"){
+    const cols=Math.max(2,Math.min(items.length,4));
+    body=root+'<div class="chuveiro-grid" style="--cols:'+cols+'">'+items.map(x=>mapCard(x,notes)).join("")+'</div>';
+  }else if(layout==="DECISAO"){
+    body=root+'<div class="decision-grid">'+items.slice(0,2).map(x=>mapCard(x,notes)).join("")+'</div>';
+  }else if(layout==="CONTRASTE"){
+    const cols=Math.max(2,Math.min(items.length,4));
+    body=root+'<div class="contrast-grid" style="--cols:'+cols+'">'+items.map(x=>mapCard(x,notes)).join("")+'</div>';
+  }else if(layout==="FLUXO"){
+    const vertical=items.length>4?" vertical":"";
+    body=root+'<div class="flow-grid'+vertical+'">'+items.map(x=>'<div class="flow-step">'+mapCard(x,notes)+'</div>').join("")+'</div>';
+  }else if(layout==="VERTICAL"){
+    body=root+'<div class="vertical-groups">'+groupItems(items).map(g=>
+      '<section class="vertical-group">'+(g.name?'<div class="vertical-group-title">'+formatInline(g.name)+'</div>':'')+
+      '<div class="vertical-cards">'+g.items.map(x=>mapCard(x,notes)).join("")+'</div></section>'
+    ).join("")+'</div>';
+  }else{
+    body='<div class="map-lateral"><div class="lateral-root-wrap">'+root+'</div><div class="lateral-groups">'+
+      groupItems(items).map(g=>'<section class="lateral-group">'+(g.name?'<div class="group-label">'+formatInline(g.name)+'</div>':'')+
+      g.items.map(x=>mapCard(x,notes)).join("")+'</section>').join("")+'</div></div>';
+  }
+
+  return '<section class="tactical-map map-'+layout.toLowerCase()+'">'+title+body+
+    (b.reference?'<div class="source-note">'+formatInline(b.reference)+'</div>':'')+'</section>';
+}
+function renderBlock(b){
+  let inner="";
+  if(b.type==="heading")inner=renderHeading(b);
+  else if(b.type==="text")inner=renderText(b);
+  else if(b.type==="callout")inner=renderCallout(b);
+  else if(b.type==="table")inner=renderTable(b);
+  else if(b.type==="map")inner=renderMap(b);
+  return '<div class="render-block '+(state.selectedId===b.id?"selected":"")+'" data-block-id="'+b.id+'">'+inner+'</div>';
+}
+
+function renderDocument(){
+  const d=state.document;
+  const preview=$("documentPreview");
+  preview.className="document-preview theme-"+d.theme+(d.economy?" economy":"");
+  $("coverPage").style.display=d.showCover?"flex":"none";
+  $("coverPage").innerHTML='<div class="cover-brandline">'+esc(d.brand)+'</div><div class="cover-rule"></div>'+
+    '<div class="cover-center"><span class="cover-kicker">MATERIAL ESTRATÉGICO</span><h1 class="cover-title">'+esc(d.title)+'</h1>'+
+    '<p class="cover-subtitle">'+esc(d.subtitle)+'</p></div>'+
+    '<div class="cover-bottom"><span>'+esc(d.edition)+'</span><span>'+esc(d.meta)+'</span></div>';
+  $("runningHeader").style.display=d.showHeader?"flex":"none";
+  $("runningHeader").innerHTML='<span>'+esc(d.brand)+'</span><span>'+esc(d.title)+'</span>';
+  $("footerBrand").textContent=d.brand;
+  $("footerMeta").textContent=d.edition;
+  $("blocksPreview").innerHTML=state.blocks.map(renderBlock).join("");
+  $("documentPreview").style.transform="scale("+state.zoom+")";
+  $("documentPreview").style.transformOrigin="top center";
+  const scaledGap=(state.zoom-1)*$("documentPreview").offsetHeight;
+  $("canvas-stage")?.style?.setProperty("--scaled-gap",scaledGap+"px");
+}
+function blockName(b){
+  if(b.type==="heading")return b.text||"Título";
+  if(b.type==="text")return (b.text||"Texto").slice(0,48);
+  if(b.type==="callout")return b.title||"Destaque";
+  if(b.type==="table")return b.title||"Tabela";
+  if(b.type==="map")return b.title||"Mapa tático";
+  return "Bloco";
+}
+function blockTypeLabel(b){
+  if(b.type==="heading")return "H"+b.level;
+  if(b.type==="text")return b.variant==="legal"?"TEXTO LEGAL":b.variant==="source"?"FONTE":"CORPO";
+  if(b.type==="callout")return b.variant.toUpperCase();
+  if(b.type==="table")return "TABELA";
+  if(b.type==="map")return "MAPA TÁTICO";
+  return b.type.toUpperCase();
+}
+function renderBlockList(){
+  $("blockCount").textContent=state.blocks.length;
+  $("blockList").innerHTML=state.blocks.map((b,i)=>
+    '<div class="block-row '+(b.id===state.selectedId?"active":"")+'" data-select-block="'+b.id+'">'+
+    '<span class="block-index">'+(i+1)+'</span><div class="block-main"><div class="block-type">'+esc(blockTypeLabel(b))+'</div>'+
+    '<div class="block-label">'+esc(blockName(b))+'</div></div>'+
+    (b.type==="map"?'<span class="block-layout-chip">'+esc(b.layout)+'</span>':'')+'</div>'
+  ).join("");
+}
+function renderAll(){
+  $("projectTitleTop").value=state.projectName;
+  const d=state.document;
+  $("docTitle").value=d.title;$("docSubtitle").value=d.subtitle;$("docEdition").value=d.edition;
+  $("docBrand").value=d.brand;$("docMeta").value=d.meta;$("docTheme").value=d.theme;
+  $("showCover").checked=d.showCover;$("showHeader").checked=d.showHeader;$("economyMode").checked=d.economy;
+  renderBlockList();renderDocument();renderInspector();
+}
+
+function selectedBlock(){return state.blocks.find(b=>b.id===state.selectedId)}
+function selectBlock(id){
+  state.selectedId=id;
+  renderBlockList();renderDocument();renderInspector();
+}
+function updateSelected(mutator){
+  const b=selectedBlock();if(!b)return;
+  mutator(b);markDirty();renderBlockList();renderDocument();
+}
+
+function textField(label,value,key,type="input"){
+  if(type==="textarea")return '<div class="field"><label>'+esc(label)+'</label><textarea data-field="'+key+'">'+esc(value||"")+'</textarea></div>';
+  return '<div class="field"><label>'+esc(label)+'</label><input data-field="'+key+'" value="'+esc(value||"")+'"></div>';
+}
+function selectField(label,value,key,options){
+  return '<div class="field"><label>'+esc(label)+'</label><select data-field="'+key+'">'+options.map(o=>'<option value="'+esc(o)+'" '+(String(o)===String(value)?"selected":"")+'>'+esc(o)+'</option>').join("")+'</select></div>';
+}
+function renderInspector(){
+  const b=selectedBlock();
+  $("inspectorEmpty").classList.toggle("hidden",!!b);
+  $("inspector").classList.toggle("hidden",!b);
+  if(!b)return;
+  $("inspectorTitle").textContent=blockTypeLabel(b);
+  let html="";
+
+  if(b.type==="heading"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Conteúdo</div>'+
+      selectField("Nível",b.level,"level",[1,2,3,4,5])+textField("Título",b.text,"text","textarea")+'</div>';
+  }
+
+  if(b.type==="text"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Texto</div>'+
+      selectField("Estilo",b.variant,"variant",["legal","body","source"])+
+      textField("Conteúdo",b.text,"text","textarea")+
+      '<div class="panel-help">Você pode manter [[CHAVE]], [[NEG]], [[POSS]] e [[REM]] dentro do texto.</div></div>';
+  }
+
+  if(b.type==="callout"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Callout</div>'+
+      selectField("Tipo",b.variant,"variant",["point","alert","example","verify","update","juris"])+
+      textField("Título",b.title,"title")+textField("Texto",b.text,"text","textarea")+'</div>';
+  }
+
+  if(b.type==="table"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Tabela</div>'+
+      textField("Título",b.title,"title")+textField("Colunas separadas por |",(b.columns||[]).join(" | "),"columns")+
+      '<div class="mini-label">Linhas</div><div id="tableRowsEditor">'+(b.rows||[]).map((r,i)=>
+        '<div class="row-editor"><div class="item-editor-top"><input data-table-row="'+i+'" value="'+esc(r.join(" | "))+'"><span></span><button class="small-remove" data-remove-row="'+i+'">×</button></div></div>'
+      ).join("")+'</div><button class="add-mini" id="addTableRow">+ linha</button>'+
+      textField("Fonte",b.source,"source")+'</div>';
+  }
+
+  if(b.type==="map"){
+    html='<div class="inspector-section"><div class="inspector-section-title">Mapa tático</div>'+
+      textField("Título",b.title,"title")+selectField("Layout",b.layout,"layout",LAYOUT_OPTIONS)+
+      textField("Raiz",b.root,"root")+textField("Referência",b.reference,"reference")+'</div>'+
+      '<div class="inspector-section"><div class="inspector-section-title">Itens</div><div id="mapItemsEditor">'+
+      (b.items||[]).map((item,i)=>
+        '<div class="item-editor"><div class="item-editor-top"><input data-item-label="'+i+'" value="'+esc(item.label)+'">'+
+        '<select data-item-class="'+i+'">'+CLASS_OPTIONS.map(c=>'<option '+(c===norm(item.class)?"selected":"")+'>'+c+'</option>').join("")+'</select>'+
+        '<button class="small-remove" data-remove-item="'+i+'">×</button></div>'+
+        (b.layout==="LATERAL"?'<input data-item-group="'+i+'" placeholder="Grupo (opcional)" value="'+esc(item.group||"")+'" style="margin-bottom:6px">':'')+
+        '<textarea data-item-desc="'+i+'">'+esc(item.description||"")+'</textarea></div>'
+      ).join("")+'</div><button class="add-mini" id="addMapItem">+ item</button></div>'+
+      '<div class="inspector-section"><div class="inspector-section-title">Notas ligadas</div><div id="mapNotesEditor">'+
+      (b.notes||[]).map((n,i)=>
+        '<div class="item-editor"><div class="item-editor-top"><input data-note-target="'+i+'" value="'+esc(n.target)+'" placeholder="Rótulo alvo">'+
+        '<select data-note-type="'+i+'">'+["CONDICAO","EXCECAO","ALERTA","OBSERVACAO","EFEITO","CONSEQUENCIA"].map(c=>'<option '+(c===norm(n.type)?"selected":"")+'>'+c+'</option>').join("")+'</select>'+
+        '<button class="small-remove" data-remove-note="'+i+'">×</button></div><textarea data-note-text="'+i+'">'+esc(n.text||"")+'</textarea></div>'
+      ).join("")+'</div><button class="add-mini" id="addMapNote">+ nota ligada</button></div>';
+  }
+
+  $("inspectorFields").innerHTML=html;
+  bindInspectorEvents();
+}
+
+function bindInspectorEvents(){
+  const root=$("inspectorFields");
+  root.querySelectorAll("[data-field]").forEach(el=>{
+    el.addEventListener("input",()=>{
+      const k=el.dataset.field;
+      updateSelected(b=>{
+        if(k==="level")b[k]=Number(el.value);
+        else if(k==="columns")b.columns=el.value.split("|").map(x=>x.trim()).filter(Boolean);
+        else b[k]=el.value;
+      });
+    });
+  });
+
+  root.querySelectorAll("[data-table-row]").forEach(el=>el.addEventListener("input",()=>{
+    const i=Number(el.dataset.tableRow);updateSelected(b=>b.rows[i]=el.value.split("|").map(x=>x.trim()));
+  }));
+  root.querySelectorAll("[data-remove-row]").forEach(el=>el.addEventListener("click",()=>{
+    const i=Number(el.dataset.removeRow);updateSelected(b=>b.rows.splice(i,1));renderInspector();
+  }));
+  $("addTableRow")?.addEventListener("click",()=>{updateSelected(b=>b.rows.push((b.columns||["",""]).map(()=>'')));renderInspector()});
+
+  root.querySelectorAll("[data-item-label]").forEach(el=>el.addEventListener("input",()=>{
+    const i=Number(el.dataset.itemLabel);updateSelected(b=>b.items[i].label=el.value);
+  }));
+  root.querySelectorAll("[data-item-class]").forEach(el=>el.addEventListener("change",()=>{
+    const i=Number(el.dataset.itemClass);updateSelected(b=>b.items[i].class=el.value);
+  }));
+  root.querySelectorAll("[data-item-group]").forEach(el=>el.addEventListener("input",()=>{
+    const i=Number(el.dataset.itemGroup);updateSelected(b=>b.items[i].group=el.value);
+  }));
+  root.querySelectorAll("[data-item-desc]").forEach(el=>el.addEventListener("input",()=>{
+    const i=Number(el.dataset.itemDesc);updateSelected(b=>b.items[i].description=el.value);
+  }));
+  root.querySelectorAll("[data-remove-item]").forEach(el=>el.addEventListener("click",()=>{
+    const i=Number(el.dataset.removeItem);updateSelected(b=>b.items.splice(i,1));renderInspector();
+  }));
+  $("addMapItem")?.addEventListener("click",()=>{updateSelected(b=>b.items.push({label:"Novo item",description:"Descrição do conteúdo.",class:"NEUTRO",group:""}));renderInspector()});
+
+  root.querySelectorAll("[data-note-target]").forEach(el=>el.addEventListener("input",()=>{
+    const i=Number(el.dataset.noteTarget);updateSelected(b=>b.notes[i].target=el.value);
+  }));
+  root.querySelectorAll("[data-note-type]").forEach(el=>el.addEventListener("change",()=>{
+    const i=Number(el.dataset.noteType);updateSelected(b=>b.notes[i].type=el.value);
+  }));
+  root.querySelectorAll("[data-note-text]").forEach(el=>el.addEventListener("input",()=>{
+    const i=Number(el.dataset.noteText);updateSelected(b=>b.notes[i].text=el.value);
+  }));
+  root.querySelectorAll("[data-remove-note]").forEach(el=>el.addEventListener("click",()=>{
+    const i=Number(el.dataset.removeNote);updateSelected(b=>b.notes.splice(i,1));renderInspector();
+  }));
+  $("addMapNote")?.addEventListener("click",()=>{updateSelected(b=>b.notes.push({target:b.items?.[0]?.label||"",text:"Observação ligada ao item.",type:"OBSERVACAO"}));renderInspector()});
+}
+
+function moveSelected(delta){
+  const i=state.blocks.findIndex(b=>b.id===state.selectedId);if(i<0)return;
+  const j=i+delta;if(j<0||j>=state.blocks.length)return;
+  [state.blocks[i],state.blocks[j]]=[state.blocks[j],state.blocks[i]];markDirty();renderAll();
+}
+function deleteSelected(){
+  const i=state.blocks.findIndex(b=>b.id===state.selectedId);if(i<0)return;
+  if(!confirm("Excluir este bloco?"))return;
+  state.blocks.splice(i,1);state.selectedId=state.blocks[Math.min(i,state.blocks.length-1)]?.id||null;markDirty();renderAll();
+}
+function duplicateSelected(){
+  const i=state.blocks.findIndex(b=>b.id===state.selectedId);if(i<0)return;
+  const copy=structuredClone(state.blocks[i]);copy.id=uid();
+  state.blocks.splice(i+1,0,copy);state.selectedId=copy.id;markDirty();renderAll();
+}
+
+function addBlock(type){
+  let b;
+  if(type==="heading")b={id:uid(),type:"heading",level:3,text:"Novo tópico"};
+  if(type==="text")b={id:uid(),type:"text",variant:"body",text:"Novo conteúdo."};
+  if(type==="callout")b={id:uid(),type:"callout",variant:"point",title:"Ponto de prova",text:"Conteúdo do destaque.",meta:{}};
+  if(type==="table")b={id:uid(),type:"table",tableType:"BASE",title:"Nova tabela",columns:["Critério","Conteúdo"],rows:[["Item","Descrição"]],source:""};
+  if(type==="map")b={id:uid(),type:"map",title:"Novo mapa tático",layout:"CHUVEIRO",root:"NÚCLEO",reference:"",items:[
+    {label:"Item 1",description:"Descrição.",class:"REGRA",group:""},
+    {label:"Item 2",description:"Descrição.",class:"CONCEITO",group:""}
+  ],notes:[]};
+  if(!b)return;
+  state.blocks.push(b);state.selectedId=b.id;markDirty();closeModal();switchPanel("blocks");renderAll();
+}
+
+function switchPanel(name){
+  document.querySelectorAll(".panel-tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===name));
+  document.querySelectorAll(".panel-view").forEach(x=>x.classList.toggle("active",x.dataset.view===name));
+}
+function processSource(){
+  const raw=$("sourceInput").value;
+  if(!raw.trim()){toast("Cole a saída do agente primeiro.","error");return}
+  if(state.blocks.length && state.dirty && !confirm("Formatar novamente substituirá os blocos atuais. Continuar?"))return;
+  state.source=raw;state.blocks=parseAgentOutput(raw);state.selectedId=state.blocks[0]?.id||null;markDirty();
+  switchPanel("blocks");renderAll();toast(state.blocks.length+" blocos formatados.");
+}
+function loadDemo(){
+  $("sourceInput").value=DEMO_SOURCE;state.source=DEMO_SOURCE;state.blocks=parseAgentOutput(DEMO_SOURCE);
+  state.selectedId=state.blocks.find(b=>b.type==="map")?.id||state.blocks[0]?.id||null;markDirty();renderAll();switchPanel("blocks");
+}
+
+function syncDocumentField(key,value){
+  state.document[key]=value;markDirty();renderDocument();
+}
+function newProject(){
+  if(state.dirty && !confirm("Há alterações não salvas. Criar um novo projeto mesmo assim?"))return;
+  state.projectId=null;state.projectName="Novo material";state.source="";state.blocks=[];state.selectedId=null;
+  state.document={title:"Título do material",subtitle:"Subtítulo estratégico",edition:"Edição 2026",brand:"BLACK BELT · LEGISLAÇÃO ESTRATÉGICA",meta:"Material de estudo · revisão orientada para prova",theme:"ponto",showCover:true,showHeader:true,economy:false};
+  $("sourceInput").value="";markDirty();renderAll();switchPanel("import");
+}
+
+async function rpc(fn,payload){
+  const res=await fetch(SUPABASE_URL+"/rest/v1/rpc/"+fn,{
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY},
+    body:JSON.stringify(payload)
+  });
+  const txt=await res.text();
+  if(!res.ok)throw new Error(txt||("HTTP "+res.status));
+  try{return txt?JSON.parse(txt):null}catch{return txt}
+}
+function studioKey(){
+  let key=localStorage.getItem("resumo-studio-key");
+  if(!key){key=prompt("Chave do Resumo Studio:")||"";if(key)localStorage.setItem("resumo-studio-key",key)}
+  return key;
+}
+async function withKey(action){
+  let key=studioKey();if(!key)throw new Error("Chave não informada.");
+  try{return await action(key)}catch(err){
+    if(String(err).toLowerCase().includes("unauthorized")){
+      localStorage.removeItem("resumo-studio-key");
+      key=studioKey();if(!key)throw err;
+      return await action(key);
+    }
+    throw err;
+  }
+}
+function projectPayload(key){
+  return {
+    p_key:key,p_id:state.projectId,p_title:state.projectName,p_subtitle:state.document.title,
+    p_edition:state.document.edition,p_brand:state.document.brand,p_theme:state.document.theme,
+    p_source_text:state.source,p_blocks:state.blocks,p_settings:{document:state.document,zoom:state.zoom}
+  };
+}
+async function saveProject(){
+  try{
+    $("saveBtn").textContent="Salvando…";
+    const id=await withKey(key=>rpc("studio_save_project",projectPayload(key)));
+    state.projectId=id;markSaved();toast("Projeto salvo no banco.");
+  }catch(err){toast("Falha ao salvar: "+friendlyError(err),"error")}
+  finally{$("saveBtn").textContent="Salvar"}
+}
+function friendlyError(err){
+  const s=String(err?.message||err);
+  if(s.includes("unauthorized"))return "chave inválida";
+  return s.length>160?s.slice(0,160)+"…":s;
+}
+async function loadProjectById(id){
+  try{
+    const data=await withKey(key=>rpc("studio_get_project",{p_key:key,p_id:id}));
+    if(!data)throw new Error("Projeto não encontrado.");
+    state.projectId=data.id;state.projectName=data.title||"Sem título";state.source=data.source_text||"";
+    state.blocks=Array.isArray(data.blocks)?data.blocks:[];state.document={...state.document,...(data.settings?.document||{}),title:data.settings?.document?.title||data.subtitle||state.document.title};
+    state.zoom=data.settings?.zoom||1;state.selectedId=state.blocks[0]?.id||null;$("sourceInput").value=state.source;markSaved();closeModal();renderAll();
+    toast("Projeto aberto.");
+  }catch(err){toast("Falha ao abrir: "+friendlyError(err),"error")}
+}
+async function showProjects(){
+  openModal("BIBLIOTECA","Projetos salvos",'<div class="empty-state">Carregando…</div>');
+  try{
+    const list=await withKey(key=>rpc("studio_list_projects",{p_key:key}));
+    $("modalBody").innerHTML=(list||[]).length?(list||[]).map(p=>
+      '<div class="project-card"><div class="project-card-main"><strong>'+esc(p.title)+'</strong><span>'+
+      esc(p.subtitle||"")+' · '+new Date(p.updated_at).toLocaleString("pt-BR")+'</span></div><div class="project-card-actions">'+
+      '<button class="ui-btn secondary" data-open-project="'+p.id+'">Abrir</button><button class="ui-btn ghost" data-delete-project="'+p.id+'">Excluir</button></div></div>'
+    ).join(""):'<div class="empty-state">Nenhum projeto salvo ainda.</div>';
+  }catch(err){$("modalBody").innerHTML='<div class="empty-state">Não foi possível carregar: '+esc(friendlyError(err))+'</div>'}
+}
+async function deleteProject(id){
+  if(!confirm("Excluir o projeto e todas as versões?"))return;
+  try{await withKey(key=>rpc("studio_delete_project",{p_key:key,p_id:id}));toast("Projeto excluído.");showProjects()}catch(err){toast(friendlyError(err),"error")}
+}
+async function showHistory(){
+  if(!state.projectId){toast("Salve o projeto primeiro.","error");return}
+  openModal("VERSÕES","Histórico editável",'<div class="empty-state">Carregando…</div>');
+  try{
+    const list=await withKey(key=>rpc("studio_list_versions",{p_key:key,p_project_id:state.projectId}));
+    $("modalBody").innerHTML=(list||[]).length?(list||[]).map(v=>
+      '<div class="version-card"><div><strong>Versão '+v.version_number+'</strong><span>'+new Date(v.created_at).toLocaleString("pt-BR")+'</span></div>'+
+      '<button class="ui-btn secondary" data-restore-version="'+v.id+'">Restaurar</button></div>'
+    ).join(""):'<div class="empty-state">O histórico começa a aparecer a partir do segundo salvamento.</div>';
+  }catch(err){$("modalBody").innerHTML='<div class="empty-state">'+esc(friendlyError(err))+'</div>'}
+}
+async function restoreVersion(id){
+  if(!confirm("Restaurar esta versão? O estado atual poderá ser recuperado se já estiver salvo."))return;
+  try{await withKey(key=>rpc("studio_restore_version",{p_key:key,p_version_id:id}));await loadProjectById(state.projectId);toast("Versão restaurada.")}catch(err){toast(friendlyError(err),"error")}
+}
+
+function openModal(eyebrow,title,body){
+  $("modalEyebrow").textContent=eyebrow;$("modalTitle").textContent=title;$("modalBody").innerHTML=body;
+  $("modalBackdrop").classList.remove("hidden");
+}
+function closeModal(){$("modalBackdrop").classList.add("hidden")}
+function showAddBlockModal(){
+  openModal("NOVO BLOCO","Adicionar componente",
+    '<div class="project-card"><div><strong>Título</strong><span>Hierarquia editorial H1–H5</span></div><button class="ui-btn secondary" data-add-block="heading">Adicionar</button></div>'+
+    '<div class="project-card"><div><strong>Texto</strong><span>Lei seca, corpo ou fonte</span></div><button class="ui-btn secondary" data-add-block="text">Adicionar</button></div>'+
+    '<div class="project-card"><div><strong>Destaque</strong><span>Ponto de prova, atenção, exemplo</span></div><button class="ui-btn secondary" data-add-block="callout">Adicionar</button></div>'+
+    '<div class="project-card"><div><strong>Tabela</strong><span>Comparações e consolidações</span></div><button class="ui-btn secondary" data-add-block="table">Adicionar</button></div>'+
+    '<div class="project-card"><div><strong>Mapa tático</strong><span>6 layouts da Macro V43.2</span></div><button class="ui-btn secondary" data-add-block="map">Adicionar</button></div>');
+}
+
+function exportPdf(){
+  document.querySelectorAll(".render-block.selected").forEach(x=>x.classList.remove("selected"));
+  setTimeout(()=>window.print(),60);
+}
+function restoreLocal(){
+  try{
+    const raw=localStorage.getItem("resumo-studio-autobackup");if(!raw)return false;
+    const data=JSON.parse(raw);
+    if(data.blocks?.length && confirm("Há um rascunho local recente. Restaurar?")){
+      Object.assign(state,data);$("sourceInput").value=state.source||"";renderAll();return true;
+    }
+  }catch{}
+  return false;
+}
+
+function bind(){
+  document.querySelectorAll(".panel-tab").forEach(x=>x.addEventListener("click",()=>switchPanel(x.dataset.tab)));
+  $("processBtn").addEventListener("click",processSource);$("loadDemoBtn").addEventListener("click",loadDemo);
+  $("newProjectBtn").addEventListener("click",newProject);$("projectsBtn").addEventListener("click",showProjects);
+  $("historyBtn").addEventListener("click",showHistory);$("saveBtn").addEventListener("click",saveProject);$("exportBtn").addEventListener("click",exportPdf);
+  $("addBlockBtn").addEventListener("click",showAddBlockModal);
+  $("modalClose").addEventListener("click",closeModal);$("modalBackdrop").addEventListener("click",e=>{if(e.target===$("modalBackdrop"))closeModal()});
+
+  $("blockList").addEventListener("click",e=>{const row=e.target.closest("[data-select-block]");if(row)selectBlock(row.dataset.selectBlock)});
+  $("blocksPreview").addEventListener("click",e=>{const block=e.target.closest("[data-block-id]");if(block)selectBlock(block.dataset.blockId)});
+
+  $("modalBody").addEventListener("click",e=>{
+    const add=e.target.closest("[data-add-block]");if(add)addBlock(add.dataset.addBlock);
+    const open=e.target.closest("[data-open-project]");if(open)loadProjectById(open.dataset.openProject);
+    const del=e.target.closest("[data-delete-project]");if(del)deleteProject(del.dataset.deleteProject);
+    const restore=e.target.closest("[data-restore-version]");if(restore)restoreVersion(restore.dataset.restoreVersion);
+  });
+
+  $("moveUpBtn").addEventListener("click",()=>moveSelected(-1));$("moveDownBtn").addEventListener("click",()=>moveSelected(1));
+  $("deleteBlockBtn").addEventListener("click",deleteSelected);$("duplicateBlockBtn").addEventListener("click",duplicateSelected);
+
+  $("projectTitleTop").addEventListener("input",e=>{state.projectName=e.target.value;markDirty()});
+  const docInputs={
+    docTitle:"title",docSubtitle:"subtitle",docEdition:"edition",docBrand:"brand",docMeta:"meta"
+  };
+  Object.entries(docInputs).forEach(([id,key])=>$(id).addEventListener("input",e=>syncDocumentField(key,e.target.value)));
+  $("docTheme").addEventListener("change",e=>syncDocumentField("theme",e.target.value));
+  $("showCover").addEventListener("change",e=>syncDocumentField("showCover",e.target.checked));
+  $("showHeader").addEventListener("change",e=>syncDocumentField("showHeader",e.target.checked));
+  $("economyMode").addEventListener("change",e=>syncDocumentField("economy",e.target.checked));
+
+  document.querySelectorAll(".zoom-btn").forEach(btn=>btn.addEventListener("click",()=>{
+    state.zoom=Number(btn.dataset.zoom);document.querySelectorAll(".zoom-btn").forEach(x=>x.classList.toggle("active",x===btn));renderDocument();
+  }));
+  window.addEventListener("beforeunload",e=>{if(state.dirty){e.preventDefault();e.returnValue=""}});
+}
+
+bind();
+if(!restoreLocal()){
+  $("sourceInput").value=DEMO_SOURCE;
+  state.source=DEMO_SOURCE;state.blocks=parseAgentOutput(DEMO_SOURCE);
+  state.selectedId=state.blocks.find(b=>b.type==="map")?.id||state.blocks[0]?.id||null;
+  state.dirty=false;renderAll();
+  $("saveStatus").textContent="demonstração";$("saveStatusDot").className="status-dot";
+}
