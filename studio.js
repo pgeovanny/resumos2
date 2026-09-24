@@ -112,7 +112,7 @@ function markSaved(){
   persistLocal();
 }
 const persistLocal = debounce(()=>{
-  localStorage.setItem("resumo-studio-autobackup", JSON.stringify({
+  localStorage.setItem("resumo-studio-autobackup-v3", JSON.stringify({
     ...state,
     dirty:true
   }));
@@ -164,21 +164,21 @@ function parseAgentOutput(raw){
 
     let m=line.match(/^\[\[(H1_LEI|H2_DIVISAO|H3_SECAO|H4_SUBSECAO|H5_TEMA)\]\]$/i);
     if(m){
-      flushLoose(); const tag=norm(m[1]), content=collect(new RegExp("^\\[\\/"+tag+"\\]$","i"));
+      flushLoose(); const tag=norm(m[1]), content=collect(new RegExp("^\\[\\[\\/"+tag+"\\]\\]$","i"));
       const level=tag==="H1_LEI"?1:tag==="H2_DIVISAO"?2:tag==="H3_SECAO"?3:tag==="H4_SUBSECAO"?4:5;
       blocks.push({id:uid(),type:"heading",level,text:content.join(" ").trim()}); continue;
     }
 
     m=line.match(/^\[\[(TEXTO_LEGAL|CORPO|FONTE)\]\]$/i);
     if(m){
-      flushLoose();const tag=norm(m[1]), content=collect(new RegExp("^\\[\\/"+tag+"\\]$","i"));
+      flushLoose();const tag=norm(m[1]), content=collect(new RegExp("^\\[\\[\\/"+tag+"\\]\\]$","i"));
       const variant=tag==="TEXTO_LEGAL"?"legal":tag==="FONTE"?"source":"body";
       paragraphsFrom(content).forEach(text=>blocks.push({id:uid(),type:"text",variant,text}));continue;
     }
 
     m=line.match(/^\[\[(COMENTARIO|PONTO_PROVA|ATENCAO|CUIDADO|NAO_CONFUNDA|OLHO_PRAZO|OLHO_COMPETENCIA|VALE_DECORAR|LETRA_LEI|COMO_CAI|REVISAO_30S|EXEMPLO|VERIFICAR|ATUALIZACAO|JURISPRUDENCIA|CHECKPOINT|GABARITO_CHECKPOINT)\]\]$/i);
     if(m){
-      flushLoose();const tag=norm(m[1]),content=collect(new RegExp("^\\[\\/"+tag+"\\]$","i")),f=readFields(content);
+      flushLoose();const tag=norm(m[1]),content=collect(new RegExp("^\\[\\[\\/"+tag+"\\]\\]$","i")),f=readFields(content);
       const variants={
         COMENTARIO:"comment",PONTO_PROVA:"point",ATENCAO:"alert",CUIDADO:"care",NAO_CONFUNDA:"contrast",
         OLHO_PRAZO:"deadline",OLHO_COMPETENCIA:"competence",VALE_DECORAR:"memorize",LETRA_LEI:"lawletter",
@@ -650,7 +650,6 @@ function switchPanel(name){
 function processSource(){
   const raw=$("sourceInput").value;
   if(!raw.trim()){toast("Cole a saída do agente primeiro.","error");return}
-  if(state.blocks.length && state.dirty && !confirm("Formatar novamente substituirá os blocos atuais. Continuar?"))return;
   state.source=raw;state.blocks=parseAgentOutput(raw);state.selectedId=state.blocks[0]?.id||null;markDirty();
   switchPanel("blocks");renderAll();toast(state.blocks.length+" blocos formatados.");
 }
@@ -811,7 +810,7 @@ function exportPdf(){
 }
 function restoreLocal(){
   try{
-    const raw=localStorage.getItem("resumo-studio-autobackup");if(!raw)return false;
+    const raw=localStorage.getItem("resumo-studio-autobackup-v3");if(!raw)return false;
     const data=JSON.parse(raw);
     if(data.blocks?.length && confirm("Há um rascunho local recente. Restaurar?")){
       Object.assign(state,data);$("sourceInput").value=state.source||"";renderAll();return true;
@@ -823,6 +822,7 @@ function restoreLocal(){
 function bind(){
   document.querySelectorAll(".panel-tab").forEach(x=>x.addEventListener("click",()=>switchPanel(x.dataset.tab)));
   $("processBtn").addEventListener("click",processSource);$("loadDemoBtn").addEventListener("click",loadDemo);
+  $("sourceInput").addEventListener("input",()=>{$("saveStatus").textContent="conteúdo alterado · clique em Formatar";$("saveStatusDot").className="status-dot dirty";});
   $("newProjectBtn").addEventListener("click",newProject);$("projectsBtn").addEventListener("click",showProjects);
   $("historyBtn").addEventListener("click",showHistory);$("saveBtn").addEventListener("click",saveProject);$("exportBtn").addEventListener("click",exportPdf);
   $("addBlockBtn").addEventListener("click",showAddBlockModal);
