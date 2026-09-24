@@ -52,7 +52,7 @@ textarea{min-height:370px;resize:vertical;font-family:ui-monospace,SFMono-Regula
 </head>
 <body>
 <header class="top no-print">
-  <div class="brand"><div class="mark">BB</div><div><strong>Resumo Studio</strong><span>formatador editorial</span></div></div>
+  <div class="brand"><div class="mark">BB</div><div><strong>Resumo Studio</strong><span>V43 parser ativo · MAPA_TATICO</span></div></div>
   <div class="actions"><button class="btn" onclick="saveDraft()">Salvar</button><button class="btn primary" onclick="exportPDF()">Exportar PDF</button></div>
 </header>
 <div class="app">
@@ -71,36 +71,31 @@ textarea{min-height:370px;resize:vertical;font-family:ui-monospace,SFMono-Regula
   </section>
   <section class="section">
     <h3>Conteúdo bruto</h3>
-    <div class="field"><textarea id="source" oninput="dirty=true"># Lei nº 9.784/1999
+    <div class="field"><textarea id="source" oninput="dirty=true">[[H1_LEI]]
+LEI Nº 9.784/1999
+[[/H1_LEI]]
 
-## Decadência administrativa
+[[H2_DIVISAO]]
+CONTROLE DOS ATOS ADMINISTRATIVOS
+[[/H2_DIVISAO]]
 
-A Administração possui o prazo de **5 anos** para anular atos administrativos de que decorram efeitos favoráveis aos destinatários, salvo comprovada má-fé.
+[[TEXTO_LEGAL]]
+Art. 54. O direito da Administração de anular os atos administrativos de que decorram efeitos favoráveis para os destinatários decai em [[CHAVE]]cinco anos[[/CHAVE]], contados da data em que foram praticados, salvo comprovada [[NEG]]má-fé[[/NEG]].
+[[/TEXTO_LEGAL]]
 
-[ATENCAO]
-O prazo decadencial deve ser lido em conjunto com a regra do art. 54. Em prova, a exceção relativa à má-fé costuma ser usada para inverter a regra geral.
-[/ATENCAO]
+[[ESQUEMA:MAPA_TATICO]]
+TITULO=Anulação, revogação e convalidação
+LAYOUT=CHUVEIRO
+RAIZ=CONTROLE DOS ATOS ADMINISTRATIVOS
+ITEM=Anulação|Retirada do ato em razão de ilegalidade.|REGRA
+ITEM=Revogação|Retirada de ato válido por conveniência e oportunidade.|CONCEITO
+ITEM=Convalidação|Correção do ato quando o vício admitir saneamento.|CONSEQUENCIA
+[[/ESQUEMA]]
 
-## Anulação x revogação
-
-| Instituto | Fundamento | Efeito |
-|---|---|---|
-| Anulação | Ilegalidade | Desfaz ato inválido |
-| Revogação | Conveniência e oportunidade | Retira ato válido |
-
-[ESQUEMA]
-Anulação → controle de legalidade
-Revogação → mérito administrativo
-Convalidação → correção de vício sanável
-[/ESQUEMA]
-
-[PEGADINHA]
-Não confunda prazo decadencial com prescrição de pretensão punitiva.
-[/PEGADINHA]
-
-## Ponto de prova
-
-Conforme o ==art. 54==, o prazo é de **5 anos**, contado da data em que o ato foi praticado, ressalvada a má-fé.</textarea></div>
+[[PONTO_PROVA]]
+TITULO=Prazo que muda o gabarito
+TEXTO=Nos atos favoráveis, o prazo decadencial é de cinco anos, ressalvada a comprovada má-fé.
+[[/PONTO_PROVA]]</textarea></div>
     <div class="help"><span class="chip"># título</span><span class="chip">## seção</span><span class="chip">**negrito**</span><span class="chip">==grifo==</span><span class="chip">[ATENCAO]</span><span class="chip">[ESQUEMA]</span></div>
     <button class="btn primary" style="width:100%" onclick="process()">Processar e formatar</button>
   </section>
