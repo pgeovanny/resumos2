@@ -577,91 +577,126 @@ function newProject(){
   $("sourceInput").value="";markDirty();renderAll();switchPanel("import");
 }
 
-async function rpc(fn,payload){
-  const res=await fetch(SUPABASE_URL+"/rest/v1/rpc/"+fn,{
-    method:"POST",
-    headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":"Bearer "+SUPABASE_KEY},
-    body:JSON.stringify(payload)
-  });
+async function api(path,{method="GET",body=null,prefer=""}={}){
+  const key=studioKey();
+  if(!key)throw new Error("Chave não informada.");
+  const headers={
+    "apikey":SUPABASE_KEY,
+    "Authorization":"Bearer "+SUPABASE_KEY,
+    "X-Studio-Key":key,
+    "Content-Type":"application/json"
+  };
+  if(prefer)headers["Prefer"]=prefer;
+  const res=await fetch(SUPABASE_URL+"/rest/v1/"+path,{method,headers,body:body==null?undefined:JSON.stringify(body)});
   const txt=await res.text();
-  if(!res.ok)throw new Error(txt||("HTTP "+res.status));
-  try{return txt?JSON.parse(txt):null}catch{return txt}
+  if(!res.ok){
+    if(res.status===401||res.status===403||txt.toLowerCase().includes("row-level security")){
+      localStorage.removeItem("resumo-studio-key");
+      throw new Error("chave inválida ou sem permissão");
+    }
+    throw new Error(txt||("HTTP "+res.status));
+  }
+  if(!txt)return null;
+  try{return JSON.parse(txt)}catch{return txt}
 }
 function studioKey(){
   let key=localStorage.getItem("resumo-studio-key");
-  if(!key){key=prompt("Chave do Resumo Studio:")||"";if(key)localStorage.setItem("resumo-studio-key",key)}
-  return key;
-}
-async function withKey(action){
-  let key=studioKey();if(!key)throw new Error("Chave não informada.");
-  try{return await action(key)}catch(err){
-    if(String(err).toLowerCase().includes("unauthorized")){
-      localStorage.removeItem("resumo-studio-key");
-      key=studioKey();if(!key)throw err;
-      return await action(key);
-    }
-    throw err;
+  if(!key){
+    key=prompt("Chave do Resumo Studio:")||"";
+    if(key)localStorage.setItem("resumo-studio-key",key.trim());
   }
+  return key.trim();
 }
-function projectPayload(key){
+function dbProjectPayload(){
   return {
-    p_key:key,p_id:state.projectId,p_title:state.projectName,p_subtitle:state.document.title,
-    p_edition:state.document.edition,p_brand:state.document.brand,p_theme:state.document.theme,
-    p_source_text:state.source,p_blocks:state.blocks,p_settings:{document:state.document,zoom:state.zoom}
+    title:state.projectName||"Sem título",
+    subtitle:state.document.title||"",
+    edition:state.document.edition||"",
+    brand:state.document.brand||"",
+    theme:state.document.theme||"ponto",
+    source_text:state.source||"",
+    blocks:state.blocks||[],
+    settings:{document:state.document,zoom:state.zoom}
   };
 }
 async function saveProject(){
   try{
     $("saveBtn").textContent="Salvando…";
-    const id=await withKey(key=>rpc("studio_save_project",projectPayload(key)));
-    state.projectId=id;markSaved();toast("Projeto salvo no banco.");
+    let rows;
+    if(!state.projectId){
+      rows=await api("editor_projects?select=id",{method:"POST",body:dbProjectPayload(),prefer:"return=representation"});
+    }else{
+      rows=await api("editor_projects?id=eq."+encodeURIComponent(state.projectId)+"&select=id",{method:"PATCH",body:dbProjectPayload(),prefer:"return=representation"});
+    }
+    if(!rows?.[0]?.id)throw new Error("o banco não confirmou o salvamento");
+    state.projectId=rows[0].id;markSaved();toast("Projeto salvo no banco.");
   }catch(err){toast("Falha ao salvar: "+friendlyError(err),"error")}
   finally{$("saveBtn").textContent="Salvar"}
 }
 function friendlyError(err){
   const s=String(err?.message||err);
-  if(s.includes("unauthorized"))return "chave inválida";
-  return s.length>160?s.slice(0,160)+"…":s;
+  return s.length>180?s.slice(0,180)+"…":s;
 }
 async function loadProjectById(id){
   try{
-    const data=await withKey(key=>rpc("studio_get_project",{p_key:key,p_id:id}));
-    if(!data)throw new Error("Projeto não encontrado.");
-    state.projectId=data.id;state.projectName=data.title||"Sem título";state.source=data.source_text||"";
-    state.blocks=Array.isArray(data.blocks)?data.blocks:[];state.document={...state.document,...(data.settings?.document||{}),title:data.settings?.document?.title||data.subtitle||state.document.title};
-    state.zoom=data.settings?.zoom||1;state.selectedId=state.blocks[0]?.id||null;$("sourceInput").value=state.source;markSaved();closeModal();renderAll();
-    toast("Projeto aberto.");
+    const rows=await api("editor_projects?id=eq."+encodeURIComponent(id)+"&select=*&limit=1");
+    const data=rows?.[0];
+    if(!data)throw new Error("Projeto não encontrado ou chave inválida.");
+    state.projectId=data.id;
+    state.projectName=data.title||"Sem título";
+    state.source=data.source_text||"";
+    state.blocks=Array.isArray(data.blocks)?data.blocks:[];
+    state.document={...state.document,...(data.settings?.document||{}),title:data.settings?.document?.title||data.subtitle||state.document.title};
+    state.zoom=data.settings?.zoom||1;
+    state.selectedId=state.blocks[0]?.id||null;
+    $("sourceInput").value=state.source;
+    markSaved();closeModal();renderAll();toast("Projeto aberto.");
   }catch(err){toast("Falha ao abrir: "+friendlyError(err),"error")}
 }
 async function showProjects(){
   openModal("BIBLIOTECA","Projetos salvos",'<div class="empty-state">Carregando…</div>');
   try{
-    const list=await withKey(key=>rpc("studio_list_projects",{p_key:key}));
+    const list=await api("editor_projects?select=id,title,subtitle,edition,theme,updated_at&order=updated_at.desc");
     $("modalBody").innerHTML=(list||[]).length?(list||[]).map(p=>
       '<div class="project-card"><div class="project-card-main"><strong>'+esc(p.title)+'</strong><span>'+
       esc(p.subtitle||"")+' · '+new Date(p.updated_at).toLocaleString("pt-BR")+'</span></div><div class="project-card-actions">'+
       '<button class="ui-btn secondary" data-open-project="'+p.id+'">Abrir</button><button class="ui-btn ghost" data-delete-project="'+p.id+'">Excluir</button></div></div>'
-    ).join(""):'<div class="empty-state">Nenhum projeto salvo ainda.</div>';
+    ).join(""):'<div class="empty-state">Nenhum projeto encontrado. Se já houver projetos, confira a chave do Studio.</div>';
   }catch(err){$("modalBody").innerHTML='<div class="empty-state">Não foi possível carregar: '+esc(friendlyError(err))+'</div>'}
 }
 async function deleteProject(id){
   if(!confirm("Excluir o projeto e todas as versões?"))return;
-  try{await withKey(key=>rpc("studio_delete_project",{p_key:key,p_id:id}));toast("Projeto excluído.");showProjects()}catch(err){toast(friendlyError(err),"error")}
+  try{
+    await api("editor_projects?id=eq."+encodeURIComponent(id),{method:"DELETE",prefer:"return=minimal"});
+    if(state.projectId===id)newProject();
+    toast("Projeto excluído.");showProjects();
+  }catch(err){toast(friendlyError(err),"error")}
 }
 async function showHistory(){
   if(!state.projectId){toast("Salve o projeto primeiro.","error");return}
   openModal("VERSÕES","Histórico editável",'<div class="empty-state">Carregando…</div>');
   try{
-    const list=await withKey(key=>rpc("studio_list_versions",{p_key:key,p_project_id:state.projectId}));
+    const list=await api("editor_versions?project_id=eq."+encodeURIComponent(state.projectId)+"&select=id,version_number,created_at&order=version_number.desc");
     $("modalBody").innerHTML=(list||[]).length?(list||[]).map(v=>
       '<div class="version-card"><div><strong>Versão '+v.version_number+'</strong><span>'+new Date(v.created_at).toLocaleString("pt-BR")+'</span></div>'+
       '<button class="ui-btn secondary" data-restore-version="'+v.id+'">Restaurar</button></div>'
-    ).join(""):'<div class="empty-state">O histórico começa a aparecer a partir do segundo salvamento.</div>';
+    ).join(""):'<div class="empty-state">O histórico aparece depois do segundo salvamento.</div>';
   }catch(err){$("modalBody").innerHTML='<div class="empty-state">'+esc(friendlyError(err))+'</div>'}
 }
 async function restoreVersion(id){
-  if(!confirm("Restaurar esta versão? O estado atual poderá ser recuperado se já estiver salvo."))return;
-  try{await withKey(key=>rpc("studio_restore_version",{p_key:key,p_version_id:id}));await loadProjectById(state.projectId);toast("Versão restaurada.")}catch(err){toast(friendlyError(err),"error")}
+  if(!confirm("Restaurar esta versão? O estado atual será guardado automaticamente como uma nova versão ao atualizar."))return;
+  try{
+    const rows=await api("editor_versions?id=eq."+encodeURIComponent(id)+"&select=snapshot&limit=1");
+    const snap=rows?.[0]?.snapshot;
+    if(!snap)throw new Error("Versão não encontrada.");
+    const body={
+      title:snap.title||"Sem título",subtitle:snap.subtitle||"",edition:snap.edition||"",brand:snap.brand||"",
+      theme:snap.theme||"ponto",source_text:snap.source_text||"",blocks:snap.blocks||[],settings:snap.settings||{}
+    };
+    const updated=await api("editor_projects?id=eq."+encodeURIComponent(state.projectId)+"&select=id",{method:"PATCH",body,prefer:"return=representation"});
+    if(!updated?.[0]?.id)throw new Error("Não foi possível restaurar.");
+    await loadProjectById(state.projectId);toast("Versão restaurada.");
+  }catch(err){toast(friendlyError(err),"error")}
 }
 
 function openModal(eyebrow,title,body){
