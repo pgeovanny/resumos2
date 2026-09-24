@@ -1,191 +1,216 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Resumo Studio — Black Belt</title>
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap');
-*{box-sizing:border-box} :root{--bg:#e9edf2;--panel:#fff;--line:#dde3e8;--ink:#111827;--muted:#6b7280;--navy:#101827;--gold:#c9a44b;--gold2:#efd58e}
-body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(--ink)}
-button,input,textarea,select{font:inherit}
-.top{position:sticky;top:0;z-index:10;height:62px;background:rgba(255,255,255,.97);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 18px}
-.brand{display:flex;align-items:center;gap:10px}.mark{width:34px;height:34px;border-radius:10px;background:var(--navy);color:var(--gold);display:grid;place-items:center;font-weight:800}.brand strong{font-size:14px}.brand span{display:block;font-size:10px;color:#77818c;margin-top:2px}
-.actions{display:flex;gap:8px}.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 12px;cursor:pointer;font-weight:650;font-size:12px}.btn.primary{background:var(--navy);color:#fff;border-color:var(--navy)}.btn:hover{filter:brightness(.98)}
-.app{display:grid;grid-template-columns:390px 1fr;min-height:calc(100vh - 62px)}.side{background:#fff;border-right:1px solid var(--line);padding:18px;height:calc(100vh - 62px);overflow:auto;position:sticky;top:62px}.section{padding:4px 0 18px;border-bottom:1px solid #edf0f3;margin-bottom:16px}.section h3{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#5d6772;margin:0 0 13px}
-.field{margin-bottom:11px}.field label{display:block;font-size:10px;color:#66717c;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;border:1px solid #d9dfe5;border-radius:8px;background:#fff;padding:9px 10px;outline:none}.field input:focus,.field textarea:focus,.field select:focus{border-color:#9ea8b2;box-shadow:0 0 0 3px rgba(15,23,42,.05)}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-textarea{min-height:370px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;line-height:1.55;background:#f8fafc!important}
-.help{display:flex;gap:5px;flex-wrap:wrap;margin:9px 0}.chip{font-size:9px;border:1px solid #e0e5e9;background:#fafbfc;border-radius:5px;padding:4px 6px;color:#67717c}.row{display:flex;align-items:center;justify-content:space-between;padding:8px 0}.row b{font-size:12px}.row small{display:block;color:#7b8590;font-size:9px;margin-top:2px}.toggle{width:38px;height:22px;border-radius:20px;background:#cdd3d9;position:relative;cursor:pointer}.toggle.on{background:var(--navy)}.toggle:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.18s}.toggle.on:after{left:19px}
-.preview{padding:22px 24px 60px;overflow:auto}.previewbar{max-width:210mm;margin:0 auto 12px;display:flex;justify-content:space-between;align-items:center}.previewbar strong{font-size:13px}.previewbar span{display:block;color:#77818c;font-size:10px;margin-top:2px}.badge{font-size:10px;border:1px solid #d8dde2;border-radius:999px;padding:6px 9px;background:#fff}.stage{min-width:210mm;display:flex;justify-content:center}
-.doc{width:210mm;background:#fff;box-shadow:0 22px 65px rgba(31,41,55,.16);--accent:#c5a24b;--soft:#f6eed8;--dark:#111a2a;--m:#68727d;--l:#dfe4e8;--serif:"Playfair Display",Georgia,serif}
-.doc.editorial{--accent:#235e59;--soft:#e9f3ef;--dark:#1f2933;--l:#d8e1df;--serif:Georgia,serif}.doc.minimal{--accent:#111827;--soft:#f1f3f5;--dark:#111827;--l:#d9dde2;--serif:Inter,Arial,sans-serif}
-.cover{height:297mm;padding:25mm 22mm 20mm;display:flex;flex-direction:column;background:radial-gradient(circle at 78% 14%,rgba(213,178,91,.2),transparent 24%),linear-gradient(145deg,#0a101b,#121c2e 65%,#1c2636);color:#fff;break-after:page;page-break-after:always}.doc:not(.blackbelt) .cover{background:radial-gradient(circle at 85% 10%,color-mix(in srgb,var(--accent) 18%,transparent),transparent 31%),linear-gradient(155deg,#fff 0%,#fff 67%,color-mix(in srgb,var(--accent) 10%,white) 100%);color:var(--dark)}
-.rule{width:32mm;height:2.5mm;background:linear-gradient(90deg,#a6812e,#efd58e);margin-bottom:10mm}.doc:not(.blackbelt) .rule{background:var(--accent)}.covertop{font-size:8.5pt;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.64)}.doc:not(.blackbelt) .covertop{color:var(--m)}
-.covermain{margin:auto 0;max-width:155mm}.kicker{font-size:8pt;font-weight:700;letter-spacing:.2em;color:#e0bd68}.doc:not(.blackbelt) .kicker{color:var(--accent)}.covermain h1{font:700 31pt/1.05 var(--serif);letter-spacing:-.025em;margin:8mm 0 0}.covermain p{font:400 12pt/1.6 Inter;margin:7mm 0 0;max-width:130mm;color:rgba(255,255,255,.72)}.doc:not(.blackbelt) .covermain p{color:var(--m)}.coverbottom{display:flex;justify-content:space-between;font-size:7.5pt;color:rgba(255,255,255,.6)}.doc:not(.blackbelt) .coverbottom{color:var(--m)}
-.content{min-height:297mm;padding:15mm 17mm 17mm;background:#fff}.running{display:flex;justify-content:space-between;gap:10mm;border-bottom:.35mm solid var(--l);padding-bottom:3.5mm;margin-bottom:7mm;font-size:6.8pt;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--m)}.running span:last-child{text-align:right}.inner{min-height:235mm}
-.material{font:400 9.4pt/1.62 Inter;color:#27313c}.material h1,.material h2,.material h3{color:var(--dark);break-after:avoid}.material h1{font:700 23pt/1.08 var(--serif);margin:0 0 8mm}.material h2{font:700 16pt/1.16 var(--serif);margin:10mm 0 4.5mm;padding-bottom:2.7mm;border-bottom:.6mm solid color-mix(in srgb,var(--accent) 72%,white)}.material h3{font:700 11.5pt/1.25 Inter;margin:7mm 0 2.8mm}.material p{margin:0 0 4.1mm;text-align:justify;hyphens:auto;orphans:3;widows:3}.material strong{color:var(--dark)}mark{background:color-mix(in srgb,var(--accent) 22%,white);padding:0 .8mm;border-radius:1mm}.legal{color:color-mix(in srgb,var(--accent) 88%,#1c2733);font-weight:750}.deadline{font-weight:760;border-bottom:.45mm solid color-mix(in srgb,var(--accent) 65%,white)}
-.callout,.scheme,.tablewrap{break-inside:avoid;page-break-inside:avoid}.callout{margin:5.5mm 0;padding:4.5mm 5mm;border:.35mm solid var(--l);border-left:1.3mm solid var(--accent);border-radius:2.2mm;background:color-mix(in srgb,var(--soft) 56%,white);font-size:8.7pt}.callout .ct{font-size:7.8pt;font-weight:700;letter-spacing:.055em;text-transform:uppercase;margin-bottom:1.7mm}.callout.trap{border-left-color:#a9363e;background:#fff4f4}.callout.trap .ct{color:#8a2830}.callout.law{border-left-color:#356c8d;background:#f2f8fb}.callout.law .ct{color:#285b79}.callout.tip{border-left-color:#367357;background:#f2f9f5}.callout.tip .ct{color:#2b644a}
-.tablewrap{margin:6mm 0;border:.3mm solid var(--l);border-radius:2mm;overflow:hidden}.tablewrap table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:7.7pt}.tablewrap th{padding:3mm 3.2mm;text-align:left;vertical-align:top;background:var(--dark);color:#fff}.minimal .tablewrap th{background:#eef1f3;color:#111827}.tablewrap td{padding:3mm 3.2mm;vertical-align:top;border-top:.25mm solid var(--l);word-wrap:break-word}.tablewrap tr:nth-child(even) td{background:#fafbfc}
-.scheme{margin:6mm 0;padding:5mm;background:#f7f8fa;border:.3mm solid var(--l);border-radius:2.2mm}.si{display:grid;grid-template-columns:7mm 1fr;gap:3mm;align-items:start;margin:2.5mm 0}.num{width:6.3mm;height:6.3mm;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:7pt;font-weight:750}.blackbelt .num{color:#111827}.si strong{font-size:8.4pt}.si p{font-size:7.8pt;color:var(--m);margin:.8mm 0 0;text-align:left}
-.footer{margin-top:10mm;padding-top:3.5mm;border-top:.3mm solid var(--l);display:flex;justify-content:space-between;font-size:6.5pt;color:#8a939d}
-
-.tactical{margin:6mm 0;padding:5mm;border:.3mm solid var(--l);border-radius:2.4mm;background:#fbfcfd;break-inside:avoid;page-break-inside:avoid}
-.tactical-title{font:700 10pt/1.25 var(--serif);color:var(--dark);margin-bottom:4mm}
-.tactical-root{padding:3.2mm 4mm;border-radius:2mm;background:var(--dark);color:#fff;font-size:8.4pt;font-weight:700;text-align:center;margin-bottom:4mm}
-.tactical-grid{display:grid;gap:3mm}
-.tactical-card{position:relative;padding:3.3mm 3.6mm;border:.3mm solid var(--l);border-left:1.1mm solid var(--accent);border-radius:2mm;background:#fff}
-.tactical-card b{display:block;font-size:8.1pt;color:var(--dark);margin-bottom:1mm}.tactical-card span{font-size:7.6pt;line-height:1.45;color:#505a65}
-.tactical-card.exception,.tactical-card.limit,.tactical-card.temporal,.tactical-card.alert{border-style:dashed}
-.tactical-group{font-size:7pt;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--m);margin:2mm 0 1.5mm}
-.tactical.vertical .tactical-grid{grid-template-columns:1fr}.tactical.vertical .tactical-card{margin-left:7mm}.tactical.vertical .tactical-card:before{content:"";position:absolute;left:-4.2mm;top:50%;width:3mm;border-top:.3mm dotted #89939d}
-.tactical.chuveiro .tactical-grid{grid-template-columns:repeat(2,minmax(0,1fr));position:relative}.tactical.chuveiro .tactical-card{text-align:center}.tactical.chuveiro .tactical-root{margin-bottom:7mm}
-.tactical.fluxo .tactical-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:stretch}.tactical.fluxo .tactical-card:not(:last-child):after{content:"→";position:absolute;right:-3mm;top:50%;transform:translateY(-50%);font-weight:800;color:var(--accent)}
-.tactical.decisao .tactical-grid{grid-template-columns:1fr 1fr}.tactical.decisao .tactical-card:first-child{border-left-color:#3f7a5f;background:#f3faf6}.tactical.decisao .tactical-card:last-child{border-left-color:#aa4f55;background:#fff5f5}
-.tactical.contraste .tactical-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tactical.contraste .tactical-card{min-height:25mm}
-.tactical.lateral .tactical-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.tactical-note{margin-top:2mm;padding:2mm 2.5mm;border-left:.8mm dotted var(--accent);background:#f7f8fa;font-size:7.2pt;color:#5b6570}
-
-@page{size:A4 portrait;margin:0}
-@media print{html,body{width:210mm;margin:0!important;padding:0!important;background:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.app,.preview,.stage{display:block!important;width:auto!important;padding:0!important;margin:0!important;overflow:visible!important}.doc{width:210mm!important;box-shadow:none!important}.cover{width:210mm;height:297mm}.content{width:210mm;min-height:297mm}.callout,.scheme,.tablewrap,h1,h2,h3{break-inside:avoid}}
-@media(max-width:900px){.app{display:block}.side{position:relative;top:0;height:auto;border-right:0}.preview{overflow-x:auto}}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Resumo Studio — Editor Editorial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700;8..60,800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./studio.css" />
 </head>
 <body>
-<header class="top no-print">
-  <div class="brand"><div class="mark">BB</div><div><strong>Resumo Studio</strong><span>V43 parser ativo · MAPA_TATICO</span></div></div>
-  <div class="actions"><button class="btn" onclick="saveDraft()">Salvar</button><button class="btn primary" onclick="exportPDF()">Exportar PDF</button></div>
-</header>
-<div class="app">
-<aside class="side no-print">
-  <section class="section">
-    <h3>Documento</h3>
-    <div class="field"><label>Título</label><input id="title" value="Lei nº 9.784/1999" oninput="render()"></div>
-    <div class="field"><label>Subtítulo</label><input id="subtitle" value="Processo Administrativo Federal — Resumo Estratégico" oninput="render()"></div>
-    <div class="grid2">
-      <div class="field"><label>Edição</label><input id="edition" value="Pós-edital 2026" oninput="render()"></div>
-      <div class="field"><label>Template</label><select id="theme" onchange="render()"><option value="blackbelt">Black Belt</option><option value="editorial">Editorial</option><option value="minimal">Minimal</option></select></div>
+  <div id="app" class="app-shell">
+    <header class="topbar no-print">
+      <div class="brand-lockup">
+        <div class="brand-mark">BB</div>
+        <div>
+          <strong>Resumo Studio</strong>
+          <span>Editor editorial · Macro V43.2</span>
+        </div>
+      </div>
+
+      <div class="project-name-wrap">
+        <span class="status-dot" id="saveStatusDot"></span>
+        <input id="projectTitleTop" class="project-title-top" value="Novo material" aria-label="Nome do projeto" />
+        <span id="saveStatus" class="save-status">não salvo</span>
+      </div>
+
+      <div class="top-actions">
+        <button class="ui-btn ghost" id="newProjectBtn">Novo</button>
+        <button class="ui-btn ghost" id="projectsBtn">Projetos</button>
+        <button class="ui-btn ghost" id="historyBtn">Histórico</button>
+        <button class="ui-btn secondary" id="saveBtn">Salvar</button>
+        <button class="ui-btn primary" id="exportBtn">Exportar PDF</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="left-panel no-print">
+        <div class="panel-tabs">
+          <button class="panel-tab active" data-tab="import">Importar</button>
+          <button class="panel-tab" data-tab="blocks">Blocos</button>
+          <button class="panel-tab" data-tab="document">Documento</button>
+        </div>
+
+        <section class="panel-view active" data-view="import">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">SAÍDA DO AGENTE</span>
+              <h2>Importar material</h2>
+            </div>
+            <span class="abi-chip">ABI V43</span>
+          </div>
+
+          <p class="panel-help">
+            Cole a saída completa do agente. O Studio converte a gramática da Macro em blocos editáveis sem alterar o conteúdo.
+          </p>
+
+          <textarea id="sourceInput" class="source-input" spellcheck="false"></textarea>
+
+          <div class="syntax-grid">
+            <span>H1–H5</span>
+            <span>TEXTO_LEGAL</span>
+            <span>PONTO_PROVA</span>
+            <span>TABELA</span>
+            <span>MAPA_TATICO</span>
+            <span>NEG / POSS / CHAVE / REM</span>
+          </div>
+
+          <button class="ui-btn primary full" id="processBtn">Formatar material</button>
+          <button class="ui-btn ghost full" id="loadDemoBtn">Carregar demonstração V43.2</button>
+        </section>
+
+        <section class="panel-view" data-view="blocks">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">ESTRUTURA</span>
+              <h2>Blocos do material</h2>
+            </div>
+            <span id="blockCount" class="count-chip">0</span>
+          </div>
+
+          <div id="blockList" class="block-list"></div>
+
+          <button class="ui-btn secondary full" id="addBlockBtn">+ Adicionar bloco</button>
+        </section>
+
+        <section class="panel-view" data-view="document">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">IDENTIDADE</span>
+              <h2>Documento</h2>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Título da capa</label>
+            <input id="docTitle" value="Lei nº 9.784/1999" />
+          </div>
+          <div class="field">
+            <label>Subtítulo</label>
+            <textarea id="docSubtitle" class="compact-textarea">Processo Administrativo Federal · Legislação Estratégica</textarea>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label>Edição</label>
+              <input id="docEdition" value="Pós-edital 2026" />
+            </div>
+            <div class="field">
+              <label>Tema</label>
+              <select id="docTheme">
+                <option value="ponto">Ponto Editorial</option>
+                <option value="blackbelt">Black Belt</option>
+                <option value="ink">Ink Minimal</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Marca</label>
+            <input id="docBrand" value="BLACK BELT · LEGISLAÇÃO ESTRATÉGICA" />
+          </div>
+          <div class="field">
+            <label>Linha de apoio</label>
+            <input id="docMeta" value="Material de estudo · revisão orientada para prova" />
+          </div>
+
+          <label class="switch-row">
+            <span><strong>Capa</strong><small>Gerar capa editorial</small></span>
+            <input type="checkbox" id="showCover" checked />
+          </label>
+          <label class="switch-row">
+            <span><strong>Cabeçalho interno</strong><small>Marca e título no material</small></span>
+            <input type="checkbox" id="showHeader" checked />
+          </label>
+          <label class="switch-row">
+            <span><strong>Modo econômico</strong><small>Reduz fundos para impressão</small></span>
+            <input type="checkbox" id="economyMode" />
+          </label>
+        </section>
+      </aside>
+
+      <main class="canvas-area">
+        <div class="canvas-toolbar no-print">
+          <div class="canvas-info">
+            <strong>Preview editorial</strong>
+            <span>A4 · clique em qualquer bloco para editar</span>
+          </div>
+          <div class="canvas-controls">
+            <button class="zoom-btn" data-zoom="0.82">82%</button>
+            <button class="zoom-btn active" data-zoom="1">100%</button>
+            <button class="zoom-btn" data-zoom="1.12">112%</button>
+          </div>
+        </div>
+
+        <div class="canvas-stage">
+          <div id="documentPreview" class="document-preview theme-ponto">
+            <section id="coverPage" class="pdf-cover"></section>
+            <section class="pdf-body">
+              <div id="runningHeader" class="running-header"></div>
+              <div id="blocksPreview" class="blocks-preview"></div>
+              <footer class="running-footer">
+                <span id="footerBrand"></span>
+                <span id="footerMeta"></span>
+              </footer>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <aside class="right-panel no-print">
+        <div id="inspectorEmpty" class="inspector-empty">
+          <div class="inspector-symbol">✦</div>
+          <h3>Selecione um bloco</h3>
+          <p>Clique no preview ou na lista para ajustar conteúdo, layout, hierarquia e apresentação.</p>
+        </div>
+
+        <div id="inspector" class="inspector hidden">
+          <div class="inspector-head">
+            <div>
+              <span class="eyebrow">EDIÇÃO DO BLOCO</span>
+              <h2 id="inspectorTitle">Bloco</h2>
+            </div>
+            <button class="icon-btn danger" id="deleteBlockBtn" title="Excluir bloco">×</button>
+          </div>
+
+          <div id="inspectorFields"></div>
+
+          <div class="inspector-actions">
+            <button class="ui-btn ghost" id="moveUpBtn">↑ Subir</button>
+            <button class="ui-btn ghost" id="moveDownBtn">↓ Descer</button>
+            <button class="ui-btn secondary" id="duplicateBlockBtn">Duplicar</button>
+          </div>
+        </div>
+      </aside>
     </div>
-    <div class="field"><label>Marca / rodapé</label><input id="brand" value="BLACK BELT · Legislação Estratégica" oninput="render()"></div>
-    <div class="row"><div><b>Capa</b><small>Inclui página inicial</small></div><div id="coverToggle" class="toggle on" onclick="toggle('cover')"></div></div>
-    <div class="row"><div><b>Cabeçalho</b><small>Identificação discreta</small></div><div id="headerToggle" class="toggle on" onclick="toggle('header')"></div></div>
-  </section>
-  <section class="section">
-    <h3>Conteúdo bruto</h3>
-    <div class="field"><textarea id="source" oninput="dirty=true">[[H1_LEI]]
-LEI Nº 9.784/1999
-[[/H1_LEI]]
+  </div>
 
-[[H2_DIVISAO]]
-CONTROLE DOS ATOS ADMINISTRATIVOS
-[[/H2_DIVISAO]]
+  <div id="modalBackdrop" class="modal-backdrop hidden no-print">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <span class="eyebrow" id="modalEyebrow">BIBLIOTECA</span>
+          <h2 id="modalTitle">Projetos</h2>
+        </div>
+        <button id="modalClose" class="icon-btn">×</button>
+      </div>
+      <div id="modalBody" class="modal-body"></div>
+    </div>
+  </div>
 
-[[TEXTO_LEGAL]]
-Art. 54. O direito da Administração de anular os atos administrativos de que decorram efeitos favoráveis para os destinatários decai em [[CHAVE]]cinco anos[[/CHAVE]], contados da data em que foram praticados, salvo comprovada [[NEG]]má-fé[[/NEG]].
-[[/TEXTO_LEGAL]]
+  <div id="toast" class="toast no-print"></div>
 
-[[ESQUEMA:MAPA_TATICO]]
-TITULO=Anulação, revogação e convalidação
-LAYOUT=CHUVEIRO
-RAIZ=CONTROLE DOS ATOS ADMINISTRATIVOS
-ITEM=Anulação|Retirada do ato em razão de ilegalidade.|REGRA
-ITEM=Revogação|Retirada de ato válido por conveniência e oportunidade.|CONCEITO
-ITEM=Convalidação|Correção do ato quando o vício admitir saneamento.|CONSEQUENCIA
-[[/ESQUEMA]]
-
-[[PONTO_PROVA]]
-TITULO=Prazo que muda o gabarito
-TEXTO=Nos atos favoráveis, o prazo decadencial é de cinco anos, ressalvada a comprovada má-fé.
-[[/PONTO_PROVA]]</textarea></div>
-    <div class="help"><span class="chip"># título</span><span class="chip">## seção</span><span class="chip">**negrito**</span><span class="chip">==grifo==</span><span class="chip">[ATENCAO]</span><span class="chip">[ESQUEMA]</span></div>
-    <button class="btn primary" style="width:100%" onclick="process()">Processar e formatar</button>
-  </section>
-  <section class="section">
-    <h3>Rascunho</h3>
-    <button class="btn" style="width:100%" onclick="loadDraft()">Carregar salvo neste navegador</button>
-  </section>
-</aside>
-<main class="preview">
-  <div class="previewbar no-print"><div><strong>Preview A4</strong><span>210 × 297 mm · impressão otimizada</span></div><div id="badge" class="badge">Black Belt</div></div>
-  <div class="stage"><div id="doc" class="doc blackbelt"></div></div>
-</main>
-</div>
-<script>
-let showCover=true,showHeader=true,dirty=false,blocks=[];
-const $=id=>document.getElementById(id);
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function inline(s){
- let h=esc((s||'').trim())
-   .replace(/\[\[NEG\]\]([\s\S]*?)\[\[\/NEG\]\]/gi,'<strong>$1</strong>')
-   .replace(/\[\[POSS\]\]([\s\S]*?)\[\[\/POSS\]\]/gi,'<mark>$1</mark>')
-   .replace(/\[\[CHAVE\]\]([\s\S]*?)\[\[\/CHAVE\]\]/gi,'<mark>$1</mark>')
-   .replace(/\[\[REM\]\]([\s\S]*?)\[\[\/REM\]\]/gi,'<span class="legal">$1</span>')
-   .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-   .replace(/==(.+?)==/g,'<mark>$1</mark>');
- h=h.replace(/\b(art\.?(?:igo)?\s*\d+[º°]?|§\s*\d+[º°]?|inciso\s+[IVXLCDM]+)\b/gi,'<span class="legal">$1</span>');
- h=h.replace(/\b(\d+\s*(?:dias?|meses?|anos?|horas?))\b/gi,'<span class="deadline">$1</span>');
- return h;
-}
-function readFields(lines){
- const obj={}; for(const line of lines){const p=line.indexOf('=');if(p<1)continue;const k=line.slice(0,p).trim().toUpperCase(),v=line.slice(p+1).trim();(obj[k]||(obj[k]=[])).push(v)} return obj
-}
-function parse(raw){
- const ls=raw.replace(/\r\n/g,'\n').trim().split('\n'),out=[];let p=[],i=0;
- const flush=()=>{let t=p.join(' ').replace(/\s+/g,' ').trim();if(t)out.push({t:'p',h:inline(t)});p=[]};
- while(i<ls.length){
-  let l=ls[i].trim(); if(!l){flush();i++;continue}
-
-  let m=l.match(/^\[\[(H1_LEI|H2_DIVISAO|H3_SECAO|H4_SUBSECAO|H5_TEMA)\]\]$/i);
-  if(m){flush();const tag=m[1].toUpperCase(),close='[[/'+tag+']]';let a=[];i++;while(i<ls.length&&ls[i].trim().toUpperCase()!==close)a.push(ls[i++].trim());if(i<ls.length)i++;const lv=tag==='H1_LEI'?1:tag==='H2_DIVISAO'?2:3;out.push({t:'h',lv,x:a.join(' ')});continue}
-
-  m=l.match(/^\[\[(TEXTO_LEGAL|CORPO|FONTE)\]\]$/i);
-  if(m){flush();const tag=m[1].toUpperCase(),close='[[/'+tag+']]';let a=[];i++;while(i<ls.length&&ls[i].trim().toUpperCase()!==close)a.push(ls[i++].trim());if(i<ls.length)i++;a.filter(Boolean).forEach(x=>out.push({t:'p',h:inline(x)}));continue}
-
-  m=l.match(/^\[\[(PONTO_PROVA|ATENCAO|EXEMPLO|VERIFICAR)\]\]$/i);
-  if(m){flush();const tag=m[1].toUpperCase(),close='[[/'+tag+']]';let a=[];i++;while(i<ls.length&&ls[i].trim().toUpperCase()!==close)a.push(ls[i++].trim());if(i<ls.length)i++;const f=readFields(a);let v=tag==='ATENCAO'?'attention':tag==='EXEMPLO'?'tip':tag==='VERIFICAR'?'law':'tip';out.push({t:'c',v,ttl:(f.TITULO||[tag.replace('_',' ')])[0],h:inline((f.TEXTO||['']).join(' '))});continue}
-
-  if(/^\[\[TABELA\]\]$/i.test(l)){flush();let a=[];i++;while(i<ls.length&&!/^\[\[\/TABELA\]\]$/i.test(ls[i].trim()))a.push(ls[i++].trim());if(i<ls.length)i++;const f=readFields(a);const heads=((f.COLUNAS||[''])[0]||'').split('|').map(x=>x.trim());const rows=(f.LINHA||[]).map(x=>x.split('|').map(y=>y.trim()));out.push({t:'tb',title:(f.TITULO||[''])[0],heads,rows});continue}
-
-  if(/^\[\[ESQUEMA:MAPA_TATICO\]\]$/i.test(l)){flush();let a=[];i++;while(i<ls.length&&!/^\[\[\/ESQUEMA\]\]$/i.test(ls[i].trim()))a.push(ls[i++].trim());if(i<ls.length)i++;const f=readFields(a);const items=[];let currentGroup='';for(const line of a){const p=line.indexOf('=');if(p<1)continue;const k=line.slice(0,p).trim().toUpperCase(),v=line.slice(p+1).trim();if(k==='GRUPO'){currentGroup=v;continue}if(k==='ITEM'){const z=v.split('|');items.push({l:z[0]||'',d:z[1]||'',cls:(z[2]||'NEUTRO').toLowerCase(),g:currentGroup})}}const notes=(f.NOTA_LIGADA||[]).map(v=>{const z=v.split('|');return {target:z[0]||'',text:z[1]||'',type:z[2]||''}});out.push({t:'mt',title:(f.TITULO||['Mapa tático'])[0],layout:((f.LAYOUT||['LATERAL'])[0]||'LATERAL').toLowerCase(),root:(f.RAIZ||[''])[0],items,notes});continue}
-
-  m=l.match(/^(#{1,3})\s+(.+)$/);if(m){flush();out.push({t:'h',lv:m[1].length,x:m[2]});i++;continue}
-  if(l.startsWith('|')&&ls[i+1]&&ls[i+1].trim().startsWith('|')){flush();let a=[];while(i<ls.length&&ls[i].trim().startsWith('|'))a.push(ls[i++].trim());let clean=x=>x.replace(/^\|/,'').replace(/\|$/,'').split('|').map(c=>c.trim());let heads=clean(a[0]),start=/^\s*\|?\s*:?-+/.test(a[1]||'')?2:1;out.push({t:'tb',heads,rows:a.slice(start).map(clean)});continue}
-  p.push(l);i++
- }flush();return out
-}
-function tacticalHTML(b){
- let html='<section class="tactical '+esc(b.layout)+'"><div class="tactical-title">'+esc(b.title)+'</div>';
- if(b.root)html+='<div class="tactical-root">'+esc(b.root)+'</div>';
- html+='<div class="tactical-grid">';
- let lastGroup='';
- b.items.forEach(x=>{if(x.g&&x.g!==lastGroup){html+='<div class="tactical-group">'+esc(x.g)+'</div>';lastGroup=x.g}
-   html+='<div class="tactical-card '+esc(x.cls)+'"><b>'+esc(x.l)+'</b><span>'+esc(x.d)+'</span>';
-   b.notes.filter(n=>n.target===x.l).forEach(n=>{html+='<div class="tactical-note">'+esc(n.text)+'</div>'}); html+='</div>';
- });
- return html+'</div></section>';
-}
-function blocksHTML(){
- return blocks.map(b=>{
-  if(b.t==='h')return '<h'+b.lv+'>'+esc(b.x)+'</h'+b.lv+'>';
-  if(b.t==='p')return '<p>'+b.h+'</p>';
-  if(b.t==='c')return '<aside class="callout '+b.v+'"><div class="ct">'+esc(b.ttl)+'</div><div>'+b.h+'</div></aside>';
-  if(b.t==='tb')return '<div class="tablewrap">'+(b.title?'<div class="ct" style="padding:3mm 3.2mm;font-weight:700">'+esc(b.title)+'</div>':'')+'<table><thead><tr>'+b.heads.map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+b.rows.map(r=>'<tr>'+r.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
-  if(b.t==='mt')return tacticalHTML(b);
-  return '';
- }).join('');
-}
-function render(){
- const title=$('title').value,subtitle=$('subtitle').value,edition=$('edition').value,brand=$('brand').value,theme=$('theme').value;
- $('badge').textContent=theme==='blackbelt'?'Black Belt':theme==='editorial'?'Editorial':'Minimal';
- $('doc').className='doc '+theme;
- $('doc').innerHTML=(showCover?'<section class="cover"><div class="rule"></div><div class="covertop">'+esc(brand)+'</div><div class="covermain"><span class="kicker">MATERIAL ESTRATÉGICO</span><h1>'+esc(title||'Título do material')+'</h1><p>'+esc(subtitle||'Subtítulo do material')+'</p></div><div class="coverbottom"><span>'+esc(edition||'Edição')+'</span><span>Resumo formatado para estudo e revisão</span></div></section>':'')+
- '<section class="content">'+(showHeader?'<div class="running"><span>'+esc(brand)+'</span><span>'+esc(title)+'</span></div>':'')+'<div class="inner"><div class="material">'+blocksHTML()+'</div></div><div class="footer"><span>'+esc(brand)+'</span><span>Material de estudo</span></div></section>';
-}
-function process(){blocks=parse($('source').value);dirty=false;render()}
-function toggle(k){if(k==='cover'){showCover=!showCover;$('coverToggle').classList.toggle('on',showCover)}else{showHeader=!showHeader;$('headerToggle').classList.toggle('on',showHeader)}render()}
-function saveDraft(){localStorage.setItem('resumo-studio-test',JSON.stringify({source:$('source').value,title:$('title').value,subtitle:$('subtitle').value,edition:$('edition').value,brand:$('brand').value,theme:$('theme').value,showCover,showHeader}));alert('Rascunho salvo neste navegador.')}
-function loadDraft(){let r=localStorage.getItem('resumo-studio-test');if(!r)return alert('Nenhum rascunho salvo.');let d=JSON.parse(r);['source','title','subtitle','edition','brand','theme'].forEach(k=>$(k).value=d[k]||'');showCover=d.showCover!==false;showHeader=d.showHeader!==false;$('coverToggle').classList.toggle('on',showCover);$('headerToggle').classList.toggle('on',showHeader);process()}
-function exportPDF(){if(dirty)process();setTimeout(()=>window.print(),50)}
-process();
-</script>
+  <script src="./studio.js"></script>
 </body>
 </html>
